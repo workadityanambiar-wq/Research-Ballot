@@ -1,6 +1,5 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import { useSession, signOut } from 'next-auth/react';
 import type { Idea, PortfolioPosition, VoteMap, Allocation } from '@/lib/types';
 import { PORT0, VOTES0, WEEK_ID } from '@/lib/data';
 import { useRouter } from 'next/navigation';
@@ -34,12 +33,26 @@ interface AppState {
 const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
-  const { data: session, status } = useSession();
+  const [user, setUser] = useState<AuthUser | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
   const [ideas, setIdeasState] = useState<Idea[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioPosition[]>(PORT0);
   const [votes, setVotes] = useState<VoteMap>(VOTES0);
   const [allocations, setAllocationsState] = useState<Allocation[]>([]);
   const router = useRouter();
+
+  useEffect(() => {
+    fetch('/api/auth/me')
+      .then(r => r.ok ? r.json() : null)
+      .then((data: AuthUser | null) => {
+        setUser(data);
+        setSessionLoading(false);
+      })
+      .catch(() => {
+        setUser(null);
+        setSessionLoading(false);
+      });
+  }, []);
 
   const refreshIdeas = useCallback(async () => {
     try {
@@ -55,13 +68,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch { /* DB not reachable */ }
   }, []);
 
-  // Load on mount (once session is ready)
   useEffect(() => {
-    if (status === 'authenticated') {
+    if (user) {
       refreshIdeas();
       refreshAllocations();
     }
-  }, [status, refreshIdeas, refreshAllocations]);
+  }, [user, refreshIdeas, refreshAllocations]);
 
   const submitRound = useCallback(async (entries: Array<{ ideaId: string; amount: number }>, round: 1 | 2) => {
     const res = await fetch('/api/allocations', {
@@ -76,27 +88,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await Promise.all([refreshIdeas(), refreshAllocations()]);
   }, [refreshIdeas, refreshAllocations]);
 
-  const user: AuthUser | null = session?.user
-    ? {
-        id: session.user.id ?? '',
-        email: session.user.email ?? '',
-        name: session.user.name ?? '',
-        displayName: (session.user as AuthUser).displayName ?? session.user.name ?? '',
-        legacyId: (session.user as AuthUser).legacyId ?? '',
-        title: (session.user as AuthUser).title ?? '',
-        role: (session.user as AuthUser).role ?? '',
-        tier: (session.user as AuthUser).tier ?? '',
-        mfaEnabled: (session.user as AuthUser).mfaEnabled ?? false,
-      }
-    : null;
-
-  const logout = async () => {
-    await signOut({ redirect: false });
+  const logout = useCallback(async () => {
+    await fetch('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    setUser(null);
     router.push('/login');
-  };
+  }, [router]);
 
   return (
-    <AppContext.Provider value={{ user, sessionLoading: status === 'loading', ideas, portfolio, votes, allocations, setPortfolio, setVotes, submitRound, refreshIdeas, logout }}>
+    <AppContext.Provider value={{ user, sessionLoading, ideas, portfolio, votes, allocations, setPortfolio, setVotes, submitRound, refreshIdeas, logout }}>
       {children}
     </AppContext.Provider>
   );

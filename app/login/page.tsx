@@ -1,13 +1,12 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSession } from 'next-auth/react';
 
 type Step = 'credentials' | 'mfa';
 
 export default function LoginPage() {
-  const { status } = useSession();
   const router = useRouter();
+  const [isAuthed, setIsAuthed] = useState<boolean | null>(null); // null = loading
   const [step, setStep] = useState<Step>('credentials');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,8 +17,13 @@ export default function LoginPage() {
   const mfaRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (status === 'authenticated') router.push('/dashboard');
-  }, [status, router]);
+    fetch('/api/auth/me')
+      .then(r => {
+        if (r.ok) { setIsAuthed(true); router.push('/dashboard'); }
+        else setIsAuthed(false);
+      })
+      .catch(() => setIsAuthed(false));
+  }, [router]);
 
   const handleCredentials = async () => {
     setError('');
@@ -90,7 +94,7 @@ export default function LoginPage() {
     }
   };
 
-  if (status === 'loading' || status === 'authenticated') {
+  if (isAuthed === null || isAuthed === true) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', color: 'var(--text4)', fontSize: 11, fontFamily: 'var(--mono)', letterSpacing: '.08em' }}>
         LOADING…
