@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-config';
 import { prisma } from '@/lib/db';
 import { WEEK_ID, IDEA_LIMIT_PER_WEEK } from '@/lib/data';
 import { computeScores } from '@/lib/scoring';
+import { getSessionUser } from '@/lib/session-helpers';
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const sessionUser = await getSessionUser(req);
+  if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const weekId = req.nextUrl.searchParams.get('weekId') ?? WEEK_ID;
   const ideas = await prisma.idea.findMany({
@@ -25,10 +25,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const sessionUser = await getSessionUser(req);
+  if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const legacyId = (session.user as { legacyId?: string }).legacyId ?? '';
+  const legacyId = sessionUser.legacyId;
 
   const count = await prisma.idea.count({ where: { authorId: legacyId, weekId: WEEK_ID } });
   if (count >= IDEA_LIMIT_PER_WEEK) {
@@ -36,11 +36,8 @@ export async function POST(req: NextRequest) {
   }
 
   let body: Record<string, unknown>;
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  }
+  try { body = await req.json(); }
+  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }); }
 
   const { ticker, assetClass, dir, entry, stop, target, hold, posSize, conv, expRet, expDD, thesis, catalysts, risks, imageUrl } = body;
 
@@ -95,7 +92,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.auditLog.create({
     data: {
-      userId: (session.user as { id: string }).id,
+      userId: sessionUser.id,
       action: 'IDEA_SUBMITTED',
       detail: `${nextId} submitted (${String(ticker).toUpperCase()} ${String(dir)} / Conv:${conv} / RR:${rrNum.toFixed(2)})`,
       risk: 'LOW',

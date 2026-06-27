@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-config';
 import { prisma } from '@/lib/db';
 import { WEEK_ID } from '@/lib/data';
+import { getSessionUser } from '@/lib/session-helpers';
 
 export async function GET(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const sessionUser = await getSessionUser(req);
+  if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const weekId = req.nextUrl.searchParams.get('weekId') ?? WEEK_ID;
   const allocs = await prisma.allocation.findMany({ where: { weekId } });
@@ -22,10 +22,10 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const sessionUser = await getSessionUser(req);
+  if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const legacyId = (session.user as { legacyId?: string }).legacyId ?? '';
+  const legacyId = sessionUser.legacyId;
 
   let body: { allocations?: Array<{ ideaId: string; amount: number }>; round?: number; weekId?: string };
   try {
@@ -54,14 +54,12 @@ export async function POST(req: NextRequest) {
     })),
   });
 
-  // Recalculate pmScores for all ideas this week using updated totals
   const allWeekAllocs = await prisma.allocation.findMany({ where: { weekId } });
   const totalsByIdea: Record<string, number> = {};
   allWeekAllocs.forEach(a => { totalsByIdea[a.ideaId] = (totalsByIdea[a.ideaId] ?? 0) + a.amount; });
   const maxCredits = Math.max(...Object.values(totalsByIdea), 1);
 
-  const affectedIds = allocs.map(a => a.ideaId);
-  for (const ideaId of affectedIds) {
+  for (const { ideaId } of allocs) {
     const totalCredits = totalsByIdea[ideaId] ?? 0;
     const idea = await prisma.idea.findUnique({
       where: { id: ideaId },
@@ -80,7 +78,7 @@ export async function POST(req: NextRequest) {
 
   await prisma.auditLog.create({
     data: {
-      userId: (session.user as { id: string }).id,
+      userId: sessionUser.id,
       action: 'BALLOT_SUBMITTED',
       detail: `Round ${round} ballot: ${allocs.length} allocations, total $${allocs.reduce((s, a) => s + a.amount, 0)}`,
       risk: 'LOW',

@@ -1,15 +1,13 @@
 import { prisma } from '@/lib/db';
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { randomBytes } from 'crypto';
 
 const SESSION_MAX_AGE_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
 // NextAuth v5 database-strategy session cookie name
-function sessionCookieName() {
-  return process.env.NODE_ENV === 'production'
-    ? '__Secure-authjs.session-token'
-    : 'authjs.session-token';
-}
+const SESSION_COOKIE = process.env.NODE_ENV === 'production'
+  ? '__Secure-authjs.session-token'
+  : 'authjs.session-token';
 
 export async function createDbSession(userId: string): Promise<{ token: string; expires: Date }> {
   const token = randomBytes(32).toString('hex');
@@ -20,7 +18,7 @@ export async function createDbSession(userId: string): Promise<{ token: string; 
 
 export function attachSessionCookie(res: NextResponse, token: string, expires: Date): NextResponse {
   const secure = process.env.NODE_ENV === 'production';
-  res.cookies.set(sessionCookieName(), token, {
+  res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     secure,
     sameSite: 'lax',
@@ -28,4 +26,16 @@ export function attachSessionCookie(res: NextResponse, token: string, expires: D
     path: '/',
   });
   return res;
+}
+
+// Direct DB session lookup — bypasses NextAuth adapter compatibility issues
+export async function getSessionUser(req: NextRequest) {
+  const token = req.cookies.get(SESSION_COOKIE)?.value;
+  if (!token) return null;
+  const record = await prisma.session.findUnique({
+    where: { sessionToken: token },
+    include: { user: true },
+  });
+  if (!record || record.expires < new Date()) return null;
+  return record.user;
 }

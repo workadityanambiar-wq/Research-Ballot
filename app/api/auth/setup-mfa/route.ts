@@ -1,25 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import QRCode from 'qrcode';
-import { auth } from '@/lib/auth-config';
 import { prisma } from '@/lib/db';
 import { generateTotpSecret, getTotpUri } from '@/lib/auth-helpers';
+import { getSessionUser } from '@/lib/session-helpers';
 
 // GET — generate a new TOTP secret and return QR code data URL
-export async function GET() {
-  const session = await auth();
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorised.' }, { status: 401 });
-  }
-
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
-  if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
+export async function GET(req: NextRequest) {
+  const sessionUser = await getSessionUser(req);
+  if (!sessionUser) return NextResponse.json({ error: 'Unauthorised.' }, { status: 401 });
 
   const secret = generateTotpSecret();
-  const otpauthUrl = await getTotpUri(user.email!, secret);
+  const otpauthUrl = await getTotpUri(sessionUser.email!, secret);
   const qrDataUrl = await QRCode.toDataURL(otpauthUrl);
 
-  // Store pending secret (not yet confirmed)
-  await prisma.user.update({ where: { id: user.id }, data: { pendingMfaSecret: secret } });
+  await prisma.user.update({ where: { id: sessionUser.id }, data: { pendingMfaSecret: secret } });
 
   return NextResponse.json({ qrDataUrl, secret });
 }

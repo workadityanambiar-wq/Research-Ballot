@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { auth } from '@/lib/auth-config';
 import { prisma } from '@/lib/db';
-import { createDbSession, attachSessionCookie } from '@/lib/session-helpers';
+import { createDbSession, attachSessionCookie, getSessionUser } from '@/lib/session-helpers';
 import {
   verifyPasswordHash,
   hashPassword,
@@ -17,8 +16,8 @@ export async function POST(req: NextRequest) {
   const ip = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ?? 'unknown';
   const userAgent = headersList.get('user-agent') ?? 'unknown';
 
-  const session = await auth();
-  if (!session?.user?.id) {
+  const sessionUser = await getSessionUser(req);
+  if (!sessionUser) {
     return NextResponse.json({ error: 'Unauthorised.' }, { status: 401 });
   }
 
@@ -35,7 +34,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'New password is required.' }, { status: 400 });
   }
 
-  const user = await prisma.user.findUnique({ where: { id: session.user.id } });
+  const user = await prisma.user.findUnique({ where: { id: sessionUser.id } });
   if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
   // First-login flow: passwordChangedAt is null → no current password needed

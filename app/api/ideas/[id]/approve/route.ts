@@ -1,31 +1,27 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth } from '@/lib/auth-config';
 import { prisma } from '@/lib/db';
+import { getSessionUser } from '@/lib/session-helpers';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session?.user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const sessionUser = await getSessionUser(req);
+  if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const userRole = (session.user as { role?: string }).role;
-  if (userRole !== 'CIO' && userRole !== 'PM') {
+  if (sessionUser.role !== 'CIO' && sessionUser.role !== 'PM') {
     return NextResponse.json({ error: 'Insufficient permissions' }, { status: 403 });
   }
 
   const { id } = await params;
 
   let body: { action?: string };
-  try {
-    body = await req.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid request' }, { status: 400 });
-  }
+  try { body = await req.json(); }
+  catch { return NextResponse.json({ error: 'Invalid request' }, { status: 400 }); }
 
   const { action } = body;
   if (!action || !['approve', 'reject'].includes(action)) {
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   }
 
-  const approvalStatus = action === 'approve' ? 'APPROVED' : ('REJECTED' as const);
+  const approvalStatus = action === 'approve' ? 'APPROVED' : 'REJECTED';
 
   const idea = await prisma.idea.update({
     where: { id },
@@ -34,7 +30,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 
   await prisma.auditLog.create({
     data: {
-      userId: (session.user as { id: string }).id,
+      userId: sessionUser.id,
       action: 'TRADE_APPROVED',
       detail: `${id} ${idea.ticker} ${idea.dir} ${action}d`,
       risk: 'LOW',
