@@ -12,8 +12,9 @@ type NavEntry = NavItem | NavSection;
 const NAV: NavEntry[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '▤', href: '/dashboard' },
   { section: 'RESEARCH' },
+  { id: 'ballot', label: 'Weekly Ballot', icon: '☑', href: '/dashboard/ballot' },
   { id: 'submit', label: 'Submit Idea', icon: '✦', href: '/dashboard/submit' },
-  { id: 'market', label: 'Ideas', icon: '◈', href: '/dashboard/market' },
+  { id: 'market', label: 'Credit Market', icon: '◈', href: '/dashboard/market' },
   { id: 'rankings', label: 'Trade Rankings', icon: '◉', href: '/dashboard/rankings' },
   { section: 'PORTFOLIO' },
   { id: 'portfolio', label: 'Portfolio Allocation', icon: '◎', href: '/dashboard/portfolio' },
@@ -34,14 +35,18 @@ export default function Sidebar({ user, onLogout }: { user: User; onLogout: () =
 
   return (
     <div style={{ width: 196, minWidth: 196, height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--panel)', borderRight: '1px solid var(--border)', flexShrink: 0, boxShadow: '1px 0 0 var(--border)' }}>
-      <div style={{ padding: '16px 14px 12px', borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-          <div style={{ width: 24, height: 24, background: 'var(--accent)', borderRadius: 5, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="14" height="14" viewBox="0 0 32 32"><polygon points="16,3 29,27 3,27" fill="none" stroke="#fff" strokeWidth="2.5" /><circle cx="16" cy="16" r="3" fill="#fff" /></svg>
+      <div style={{ padding: '14px 14px 12px', borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          {/* Century Financial logo mark — two overlapping gold squares */}
+          <svg width="28" height="24" viewBox="0 0 28 24" fill="none" style={{ flexShrink: 0 }}>
+            <rect x="1" y="1" width="15" height="15" stroke="#E8A000" strokeWidth="2"/>
+            <rect x="10" y="7" width="15" height="15" stroke="#E8A000" strokeWidth="2" fill="var(--panel)"/>
+          </svg>
+          <div style={{ lineHeight: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: '#1C1917', letterSpacing: '.07em' }}>CENTURY</div>
+            <div style={{ fontSize: 8, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.1em', marginTop: 3 }}>FINANCIAL</div>
           </div>
-          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: '.02em', color: 'var(--text)' }}>Research Ballot</span>
         </div>
-        <div style={{ fontSize: 9, color: 'var(--text4)', letterSpacing: '.06em', paddingLeft: 32 }}>Century Research</div>
       </div>
 
       <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
@@ -81,6 +86,12 @@ export default function Sidebar({ user, onLogout }: { user: User; onLogout: () =
 
       <div style={{ padding: '12px', borderTop: '1px solid var(--border)' }}>
         <div className="mono" style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 8 }}>W26-2025 · {user.id}</div>
+        <Link href="/dashboard/change-password" style={{ textDecoration: 'none', display: 'block', marginBottom: 6 }}>
+          <div className={`nav-item ${pathname === '/dashboard/change-password' ? 'active' : ''}`} style={{ padding: '5px 8px', fontSize: 10 }}>
+            <span style={{ fontSize: 11, width: 14, textAlign: 'center', opacity: .7 }}>🔑</span>
+            <span>Change Password</span>
+          </div>
+        </Link>
         <button className="btn btn-ghost btn-sm" style={{ width: '100%', justifyContent: 'center', color: 'var(--text3)', borderColor: 'var(--border2)' }} onClick={onLogout}>SIGN OUT</button>
       </div>
     </div>
