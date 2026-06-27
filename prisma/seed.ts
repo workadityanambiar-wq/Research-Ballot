@@ -1,10 +1,17 @@
 import 'dotenv/config';
+import { config } from 'dotenv';
+config({ path: '.env.local', override: true });
 import { PrismaClient } from '../lib/generated/prisma/client';
-import { PrismaNeon } from '@prisma/adapter-neon';
+import { PrismaPg } from '@prisma/adapter-pg';
+import pg from 'pg';
 import { hash } from '@node-rs/argon2';
 import { IDEAS0, ALLOCATIONS0 } from '../lib/data';
 
-const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL ?? '' });
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL_UNPOOLED ?? process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
+const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 const TEMP_PASSWORD = 'Apex@2025';
