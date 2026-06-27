@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import type { AuthUser } from '@/context/AppContext';
 import { ROLE_COLOR } from '@/lib/permissions';
 import { TierBadge } from '@/components/ui/Badge';
@@ -33,19 +34,42 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
   const isCio = user.role === 'CIO';
   const initials = user.name.split(' ').map(n => n[0]).join('');
 
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
+
+  useEffect(() => {
+    const stored = localStorage.getItem('theme');
+    const current = stored ?? (document.documentElement.getAttribute('data-theme') ?? 'light');
+    setTheme(current as 'light' | 'dark');
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    localStorage.setItem('theme', next);
+    document.documentElement.setAttribute('data-theme', next);
+  };
+
   return (
     <div style={{ width: 196, minWidth: 196, height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--panel)', borderRight: '1px solid var(--border)', flexShrink: 0, boxShadow: '1px 0 0 var(--border)' }}>
       <div style={{ padding: '14px 14px 12px', borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-          {/* Century Financial logo mark — two overlapping gold squares */}
           <svg width="28" height="24" viewBox="0 0 28 24" fill="none" style={{ flexShrink: 0 }}>
             <rect x="1" y="1" width="15" height="15" stroke="#E8A000" strokeWidth="2"/>
             <rect x="10" y="7" width="15" height="15" stroke="#E8A000" strokeWidth="2" fill="var(--panel)"/>
           </svg>
-          <div style={{ lineHeight: 1 }}>
-            <div style={{ fontSize: 12, fontWeight: 800, color: '#1C1917', letterSpacing: '.07em' }}>CENTURY</div>
+          <div style={{ lineHeight: 1, flex: 1 }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: 'var(--text)', letterSpacing: '.07em' }}>CENTURY</div>
             <div style={{ fontSize: 8, fontWeight: 600, color: 'var(--text3)', letterSpacing: '.1em', marginTop: 3 }}>FINANCIAL</div>
           </div>
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text4)', fontSize: 13, padding: '2px 4px', borderRadius: 4, lineHeight: 1, transition: 'color .15s' }}
+            onMouseOver={e => (e.currentTarget.style.color = 'var(--accent)')}
+            onMouseOut={e => (e.currentTarget.style.color = 'var(--text4)')}
+          >
+            {theme === 'dark' ? '☀' : '☾'}
+          </button>
         </div>
       </div>
 
