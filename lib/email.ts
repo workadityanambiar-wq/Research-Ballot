@@ -3,7 +3,8 @@ import { Resend } from 'resend';
 const FROM = process.env.RESEND_FROM ?? 'Century Financial <noreply@century.ae>';
 
 async function send(to: string, subject: string, html: string) {
-  const key = process.env.RESEND_API_KEY;
+  // Strip BOM and other non-printable chars that PowerShell may inject via pipe
+  const key = (process.env.RESEND_API_KEY ?? '').replace(/[^\x20-\x7E]/g, '');
   if (!key || key.startsWith('re_REPLACE')) {
     console.log(`[EMAIL DEV] To: ${to} | Subject: ${subject}`);
     return;
