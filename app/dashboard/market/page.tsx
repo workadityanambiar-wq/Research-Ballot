@@ -359,7 +359,7 @@ export default function MarketPage() {
 
   const [myVotes, setMyVotes] = useState<Record<string, number>>(() => {
     const mv: Record<string, number> = {};
-    ideas.forEach(i => { const v = votes[i.id]?.[user!.id]; if (v) mv[i.id] = v; });
+    ideas.forEach(i => { const v = votes[i.id]?.[user!.legacyId]; if (v) mv[i.id] = v; });
     return mv;
   });
   const [filter, setFilter] = useState('all');
@@ -396,7 +396,7 @@ export default function MarketPage() {
     const upd = { ...votes };
     Object.entries(myVotes).forEach(([id, cr]) => {
       if (!upd[id]) upd[id] = {};
-      upd[id][user.id] = cr;
+      upd[id][user.legacyId] = cr;
     });
     setVotes(upd);
     alert('Credits submitted. Allocation recorded and anonymized.');
@@ -469,7 +469,7 @@ export default function MarketPage() {
                 key={idea.id}
                 idea={idea}
                 voteMap={votes[idea.id] ?? {}}
-                userId={user.id}
+                userId={user.legacyId}
                 canVote={canVote}
                 onAllocate={setAllocTarget}
                 idx={i}

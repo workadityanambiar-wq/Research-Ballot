@@ -1,178 +1,438 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { DirBadge } from '@/components/ui/Badge';
-import { WEEK_ID } from '@/lib/data';
+import { USERS, getPhase, ROUND_BUDGET, WEEK_ID } from '@/lib/data';
+import type { Allocation, Phase, Idea } from '@/lib/types';
+
+// ── helpers ───────────────────────────────────────────────────────────────────
+
+const fmt = (n: number) => n.toLocaleString('en-US');
+
+function nextDeadlineUTC(targetDay: number, h: number, m: number): number {
+  const now = new Date();
+  const istOff = 330 * 60 * 1000;
+  const ist = new Date(now.getTime() + istOff);
+  const curDay = ist.getUTCDay();
+  const curMins = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+  let days = (targetDay - curDay + 7) % 7;
+  if (days === 0 && curMins >= h * 60 + m) days = 7;
+  const dl = new Date(ist);
+  dl.setUTCDate(ist.getUTCDate() + days);
+  dl.setUTCHours(h, m, 0, 0);
+  return dl.getTime() - istOff;
+}
+
+function phaseCfg(p: Phase) {
+  return {
+    round1:        { label: 'ROUND 1 OPEN',     sub: 'Closes Mon 4:30 PM IST',           color: 'var(--long)',   deadline: nextDeadlineUTC(1, 16, 30), isOpen: true  },
+    round1_closed: { label: 'ROUND 1 CLOSED',   sub: 'Round 2 opens Wed 9:00 AM IST',    color: 'var(--warn)',   deadline: nextDeadlineUTC(3,  9,  0), isOpen: false },
+    round2:        { label: 'ROUND 2 OPEN',      sub: 'Closes Thu 4:30 PM IST',           color: 'var(--long)',   deadline: nextDeadlineUTC(4, 16, 30), isOpen: true  },
+    results:       { label: 'RESULTS PUBLISHED', sub: 'New ballot opens Sat 9:00 AM IST', color: 'var(--accent)', deadline: nextDeadlineUTC(6,  9,  0), isOpen: false },
+  }[p];
+}
+
+function fmtMs(ms: number) {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  return [Math.floor(s / 3600), Math.floor((s % 3600) / 60), s % 60]
+    .map(n => String(n).padStart(2, '0')).join(':');
+}
+
+// ── Idea card ─────────────────────────────────────────────────────────────────
+
+function IdeaCard({ idea, isOwn, inputVal, onInput, teamTotal, hasSubmitted, lockedAmt }: {
+  idea: Idea; isOwn: boolean; inputVal: string; onInput: (v: string) => void;
+  teamTotal: number; hasSubmitted: boolean; lockedAmt: number;
+}) {
+  const staged = parseInt(inputVal || '0', 10) || 0;
+  const active = staged > 0 || lockedAmt > 0;
+
+  return (
+    <div style={{
+      background: 'var(--panel)', borderRadius: 6, padding: 14, position: 'relative',
+      border: `1px solid ${isOwn ? 'rgba(217,119,6,.3)' : active ? 'rgba(37,99,235,.35)' : 'var(--border)'}`,
+      boxShadow: active ? '0 0 10px rgba(37,99,235,.05)' : 'var(--shadow)',
+      opacity: isOwn ? 0.5 : 1,
+    }}>
+      {isOwn && (
+        <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 9, color: 'var(--warn)', background: 'var(--warn-dim)', padding: '2px 7px', borderRadius: 3, fontWeight: 600, letterSpacing: '.04em' }}>
+          YOUR IDEA
+        </div>
+      )}
+      {!isOwn && staged > 0 && !hasSubmitted && (
+        <div style={{ position: 'absolute', top: 11, right: 11, width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)' }} />
+      )}
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+        <span className="mono" style={{ fontSize: 9, color: 'var(--text4)', background: 'var(--bg)', padding: '1px 5px', borderRadius: 2, border: '1px solid var(--border)' }}>{idea.id}</span>
+        <DirBadge dir={idea.dir} />
+      </div>
+
+      <div className="mono" style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>{idea.ticker}</div>
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 8 }}>
+        {([['EXP RET', `+${idea.expRet}%`, 'var(--long)'], ['R/R', `${idea.rr}x`, idea.rr >= 2 ? 'var(--long)' : 'var(--warn)'], ['CONV', `${idea.conv}/10`, 'var(--accent)']] as [string, string, string][]).map(([lbl, val, clr]) => (
+          <div key={lbl} style={{ background: 'var(--bg)', borderRadius: 4, padding: '4px 6px' }}>
+            <div style={{ fontSize: 8, color: 'var(--text4)', marginBottom: 2 }}>{lbl}</div>
+            <div className="mono" style={{ fontSize: 11, fontWeight: 700, color: clr }}>{val}</div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ fontSize: 9, color: 'var(--text3)', lineHeight: 1.6, height: 40, overflow: 'hidden', marginBottom: 10 }}>
+        {idea.thesis.slice(0, 130)}…
+      </div>
+
+      {teamTotal > 0 && (
+        <div className="mono" style={{ fontSize: 10, color: 'var(--text3)', marginBottom: active ? 8 : 0 }}>
+          Team: <strong style={{ color: 'var(--text)' }}>${fmt(teamTotal)}</strong>
+        </div>
+      )}
+
+      {!isOwn && !hasSubmitted && (
+        <div>
+          <div style={{ display: 'flex', gap: 4, marginBottom: 6 }}>
+            {[500, 1000, 2000].map(n => (
+              <button key={n} onClick={() => onInput(String((staged || 0) + n))} className="btn btn-ghost btn-sm"
+                style={{ flex: 1, padding: '3px 0', fontSize: 9 }}>+{n}</button>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'var(--bg)', borderRadius: 5, padding: '0 8px', border: `1px solid ${staged > 0 ? 'rgba(37,99,235,.4)' : 'var(--border2)'}` }}>
+              <span style={{ fontSize: 11, color: 'var(--text3)', marginRight: 2 }}>$</span>
+              <input type="text" inputMode="numeric" value={inputVal} placeholder="0"
+                onChange={e => onInput(e.target.value.replace(/\D/g, ''))}
+                style={{ flex: 1, border: 'none', background: 'transparent', color: 'var(--text)', fontSize: 13, fontFamily: 'var(--mono)', fontWeight: 700, padding: '6px 0', outline: 'none' }} />
+            </div>
+            {staged > 0 && (
+              <button onClick={() => onInput('0')} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--short)', fontSize: 18, lineHeight: 1 }}>×</button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {hasSubmitted && lockedAmt > 0 && (
+        <div className="mono" style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)', marginTop: 2 }}>
+          Your allocation: ${fmt(lockedAmt)} ✓
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Results table ─────────────────────────────────────────────────────────────
+
+function ResultsTable({ ideas, allocations, round }: { ideas: Idea[]; allocations: Allocation[]; round: 1 | 2 | 'both' }) {
+  const totals: Record<string, number> = {};
+  const counts: Record<string, Set<string>> = {};
+  allocations.filter(a => round === 'both' || a.round === round).forEach(a => {
+    totals[a.ideaId] = (totals[a.ideaId] ?? 0) + a.amount;
+    (counts[a.ideaId] ??= new Set()).add(a.userId);
+  });
+  const grand = Object.values(totals).reduce((s, v) => s + v, 0);
+  const maxAmt = Math.max(...Object.values(totals), 1);
+  const ranked = [...ideas].sort((a, b) => (totals[b.id] ?? 0) - (totals[a.id] ?? 0));
+
+  return (
+    <div style={{ overflowX: 'auto' }}>
+      <table className="tbl">
+        <thead>
+          <tr>
+            <th>#</th><th>IDEA</th><th>AUTHOR</th><th>TICKER</th>
+            <th>DIR</th><th>TOTAL CAPITAL</th><th>ANALYSTS</th><th>POOL %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {ranked.map((idea, i) => {
+            const total = totals[idea.id] ?? 0;
+            const cnt = counts[idea.id]?.size ?? 0;
+            const pct = grand > 0 ? ((total / grand) * 100).toFixed(1) : '0.0';
+            const author = USERS.find(u => u.id === idea.authorId);
+            return (
+              <tr key={idea.id}>
+                <td><span className="mono" style={{ fontWeight: 700, color: i < 3 ? 'var(--accent)' : 'var(--text3)' }}>#{i + 1}</span></td>
+                <td><span className="mono" style={{ fontSize: 10, color: 'var(--text4)' }}>{idea.id}</span></td>
+                <td style={{ fontSize: 10, color: 'var(--text2)' }}>{author?.name ?? '—'}</td>
+                <td><span className="mono" style={{ fontWeight: 700 }}>{idea.ticker}</span></td>
+                <td><DirBadge dir={idea.dir} /></td>
+                <td>
+                  <span className="mono" style={{ fontWeight: 700, color: total > 0 ? 'var(--text)' : 'var(--text4)' }}>${fmt(total)}</span>
+                  <div className="bar-track" style={{ width: 72, marginTop: 3 }}>
+                    <div className="bar-fill" style={{ width: `${Math.round((total / maxAmt) * 100)}%`, background: idea.dir === 'LONG' ? 'var(--long)' : 'var(--short)' }} />
+                  </div>
+                </td>
+                <td><span className="mono">{cnt}</span></td>
+                <td><span className="mono" style={{ color: 'var(--text2)' }}>{pct}%</span></td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BallotPage() {
-  const { user, ideas, votes, setVotes } = useApp();
+  const { user, ideas, allocations, submitRound } = useApp();
+  const [phase, setPhase] = useState<Phase>(getPhase);
+  const [inputVals, setInputVals] = useState<Record<string, string>>({});
+  const [now, setNow] = useState(Date.now);
 
-  const [picks, setPicks] = useState<string[]>(() => {
-    if (!user) return [];
-    return ideas
-      .filter(i => (votes[i.id]?.[user.id] ?? 0) > 0 && i.authorId !== user.id)
-      .sort((a, b) => (votes[b.id]?.[user.id] ?? 0) - (votes[a.id]?.[user.id] ?? 0))
-      .slice(0, 3)
-      .map(i => i.id);
-  });
-  const [submitted, setSubmitted] = useState(false);
+  useEffect(() => {
+    const id = setInterval(() => { setNow(Date.now()); setPhase(getPhase()); }, 1000);
+    return () => clearInterval(id);
+  }, []);
 
   if (!user) return null;
 
-  const toggle = (id: string) => {
-    const idea = ideas.find(i => i.id === id);
-    if (!idea || idea.authorId === user.id) return;
-    if (picks.includes(id)) {
-      setPicks(picks.filter(p => p !== id));
-    } else if (picks.length < 3) {
-      setPicks([...picks, id]);
-    }
+  const legacyId = user.legacyId;
+  const currentRound: 1 | 2 = phase === 'round2' ? 2 : 1;
+  const cfg = phaseCfg(phase);
+  const msLeft = Math.max(0, cfg.deadline - now);
+
+  const r1Totals: Record<string, number> = {};
+  const r2Totals: Record<string, number> = {};
+  const r1Users = new Set<string>();
+  const r2Users = new Set<string>();
+  allocations.forEach(a => {
+    if (a.round === 1) { r1Totals[a.ideaId] = (r1Totals[a.ideaId] ?? 0) + a.amount; r1Users.add(a.userId); }
+    else               { r2Totals[a.ideaId] = (r2Totals[a.ideaId] ?? 0) + a.amount; r2Users.add(a.userId); }
+  });
+
+  const totalR1 = Object.values(r1Totals).reduce((s, v) => s + v, 0);
+  const totalR2 = Object.values(r2Totals).reduce((s, v) => s + v, 0);
+  const participants = phase === 'round2' || phase === 'results' ? r2Users.size : r1Users.size;
+  const totalAlloc = phase === 'results' ? totalR1 + totalR2 : phase === 'round2' ? totalR2 : totalR1;
+  const totalMembers = USERS.length;
+
+  const hasSubmitted = allocations.some(a => a.userId === legacyId && a.round === currentRound);
+  const myAllocs = allocations.filter(a => a.userId === legacyId && a.round === currentRound);
+
+  const stagedTotal = Object.values(inputVals).reduce((s, v) => s + (parseInt(v || '0', 10) || 0), 0);
+  const remaining = ROUND_BUDGET - stagedTotal;
+
+  const teamTotal = (idea: Idea) =>
+    (r1Totals[idea.id] ?? 0) + (phase === 'round2' || phase === 'results' ? (r2Totals[idea.id] ?? 0) : 0);
+
+  const lockBallot = () => {
+    const entries = Object.entries(inputVals).filter(([, v]) => (parseInt(v || '0', 10) || 0) > 0);
+    if (entries.length === 0 || remaining < 0) return;
+    const ts = new Date().toISOString();
+    const newAllocs: Allocation[] = entries.map(([ideaId, v], i) => ({
+      id: `AL-U${Date.now()}-${i}`,
+      userId: legacyId,
+      ideaId,
+      amount: parseInt(v, 10),
+      round: currentRound,
+      submittedAt: ts,
+      weekId: WEEK_ID,
+    }));
+    submitRound(newAllocs);
   };
 
-  const submit = () => {
-    if (picks.length < 2) return;
-    const upd = { ...votes };
-    Object.keys(upd).forEach(ideaId => {
-      if (upd[ideaId]?.[user.id]) {
-        const entry = { ...upd[ideaId] };
-        delete entry[user.id];
-        upd[ideaId] = entry;
-      }
-    });
-    const credits = [900, 700, 500];
-    picks.forEach((ideaId, idx) => {
-      upd[ideaId] = { ...(upd[ideaId] ?? {}), [user.id]: credits[idx] };
-    });
-    setVotes(upd);
-    setSubmitted(true);
-  };
+  const sidebarItems: { ideaId: string; amount: number }[] = hasSubmitted
+    ? myAllocs.map(a => ({ ideaId: a.ideaId, amount: a.amount }))
+    : Object.entries(inputVals).filter(([, v]) => (parseInt(v || '0', 10) || 0) > 0)
+        .map(([ideaId, v]) => ({ ideaId, amount: parseInt(v, 10) }));
 
-  if (submitted) {
-    const pickedIdeas = picks.map(id => ideas.find(i => i.id === id)).filter(Boolean) as typeof ideas;
-    return (
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 16 }}>
-        <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'var(--long-dim)', border: '1px solid rgba(34,197,94,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 24, color: 'var(--long)' }}>✓</div>
-        <div style={{ fontSize: 16, fontWeight: 700 }}>Ballot Submitted</div>
-        <div style={{ fontSize: 11, color: 'var(--text3)' }}>Your top {picks.length} picks for {WEEK_ID} have been recorded.</div>
-        <div style={{ display: 'flex', gap: 10, marginTop: 6 }}>
-          {pickedIdeas.map((idea, i) => (
-            <div key={idea.id} className="panel" style={{ padding: '10px 16px', textAlign: 'center', minWidth: 80 }}>
-              <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 4 }}>PICK #{i + 1}</div>
-              <DirBadge dir={idea.dir} />
-              <div className="mono" style={{ fontSize: 17, fontWeight: 700, marginTop: 4 }}>{idea.ticker}</div>
-            </div>
-          ))}
+  // ── Phase banner ──────────────────────────────────────────────────────────────
+  const banner = (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: 'var(--panel)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        <span className="dot" style={{ background: cfg.color, width: 8, height: 8 }} />
+        <div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: cfg.color, letterSpacing: '.05em' }}>{cfg.label}</div>
+          <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{cfg.sub} · {WEEK_ID}</div>
         </div>
-        <button className="btn btn-ghost btn-sm" style={{ marginTop: 4 }} onClick={() => setSubmitted(false)}>Edit Picks</button>
+        {cfg.isOpen && (
+          <div className="mono" style={{ fontSize: 11, color: 'var(--text2)', background: 'var(--bg)', padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border2)' }}>
+            {fmtMs(msLeft)}
+          </div>
+        )}
+      </div>
+      <div style={{ display: 'flex', gap: 24 }}>
+        <div style={{ textAlign: 'right' }}>
+          <div className="mono" style={{ fontSize: 13, fontWeight: 700 }}>{participants}/{totalMembers}</div>
+          <div style={{ fontSize: 9, color: 'var(--text4)' }}>analysts allocated</div>
+        </div>
+        <div style={{ textAlign: 'right' }}>
+          <div className="mono" style={{ fontSize: 13, fontWeight: 700 }}>${fmt(totalAlloc)}</div>
+          <div style={{ fontSize: 9, color: 'var(--text4)' }}>capital deployed</div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Closed / final results ────────────────────────────────────────────────────
+  if (phase === 'round1_closed' || phase === 'results') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+        {banner}
+        <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
+          {phase === 'round1_closed' && (
+            <div style={{ marginBottom: 16, padding: '9px 14px', background: 'rgba(37,99,235,.05)', border: '1px solid rgba(37,99,235,.15)', borderRadius: 6, fontSize: 10, color: 'var(--text2)' }}>
+              Round 1 closed · Attribution now visible · Round 2 opens Wednesday 9:00 AM IST with a fresh $5,000 budget
+            </div>
+          )}
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 10 }}>
+            {phase === 'results' ? 'Final Combined Results — R1 + R2' : 'Round 1 Results'}
+          </div>
+          <ResultsTable ideas={ideas} allocations={allocations} round={phase === 'results' ? 'both' : 1} />
+          {phase === 'results' && totalR2 > 0 && (
+            <div style={{ marginTop: 32 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 10 }}>Round 2 Detail</div>
+              <ResultsTable ideas={ideas} allocations={allocations} round={2} />
+            </div>
+          )}
+        </div>
       </div>
     );
   }
 
+  // ── Allocation feed (round1 or round2 open) ───────────────────────────────────
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '1fr 260px', height: '100%', overflow: 'hidden' }}>
-      <div className="scroll-y" style={{ padding: 16, borderRight: '1px solid var(--border)' }}>
-        <div className="sec-hdr" style={{ marginBottom: 8 }}>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Weekly Research Ballot</div>
-            <div style={{ fontSize: 10, color: 'var(--text3)' }}>Select your top 2–3 conviction ideas · {WEEK_ID} · Identities revealed after cycle closes</div>
-          </div>
-          <span className="badge badge-low pulse">OPEN</span>
-        </div>
-        <div style={{ marginBottom: 14, padding: '7px 10px', background: 'var(--bg)', borderRadius: 4, border: '1px solid var(--border)', fontSize: 10, color: 'var(--text3)' }}>
-          Click a card to select it · You cannot vote on your own ideas · Picks lock on submission
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          {ideas.map(idea => {
-            const isOwn = idea.authorId === user.id;
-            const pickIdx = picks.indexOf(idea.id);
-            const isPicked = pickIdx >= 0;
-            return (
-              <div
-                key={idea.id}
-                onClick={() => toggle(idea.id)}
-                style={{
-                  background: isPicked ? 'var(--panel2)' : 'var(--panel)',
-                  border: `1px solid ${isPicked ? 'rgba(37,99,235,.5)' : 'var(--border)'}`,
-                  borderRadius: 4, padding: 14, cursor: isOwn ? 'not-allowed' : 'pointer',
-                  opacity: isOwn ? 0.45 : 1, position: 'relative', transition: 'all .15s',
-                  boxShadow: isPicked ? '0 0 20px rgba(37,99,235,.07)' : 'none',
-                }}
-              >
-                {isPicked && (
-                  <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, background: 'var(--accent)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>
-                    {pickIdx + 1}
-                  </div>
-                )}
-                {isOwn && (
-                  <div style={{ position: 'absolute', top: 8, right: 8, fontSize: 9, color: 'var(--warn)', background: 'var(--warn-dim)', padding: '1px 6px', borderRadius: 2 }}>YOURS</div>
-                )}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-                  <span className="mono" style={{ fontSize: 9, color: 'var(--text4)' }}>{idea.id}</span>
-                  <DirBadge dir={idea.dir} />
-                </div>
-                <div className="mono" style={{ fontSize: 20, fontWeight: 700, marginBottom: 6 }}>{idea.ticker}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 4, marginBottom: 6 }}>
-                  <div><div style={{ fontSize: 8, color: 'var(--text4)' }}>CONV</div><div className="mono" style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>{idea.conv}/10</div></div>
-                  <div><div style={{ fontSize: 8, color: 'var(--text4)' }}>RET</div><div className="mono" style={{ fontSize: 12, fontWeight: 700, color: 'var(--long)' }}>+{idea.expRet}%</div></div>
-                  <div><div style={{ fontSize: 8, color: 'var(--text4)' }}>R/R</div><div className="mono" style={{ fontSize: 12, color: idea.rr >= 2 ? 'var(--long)' : 'var(--warn)' }}>{idea.rr}</div></div>
-                </div>
-                <div style={{ fontSize: 9, color: 'var(--text3)', lineHeight: 1.5, height: 36, overflow: 'hidden' }}>{idea.thesis.slice(0, 100)}…</div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {banner}
 
-      <div className="scroll-y" style={{ padding: 16, background: 'var(--panel2)' }}>
-        <div className="sec-title" style={{ marginBottom: 12 }}>YOUR PICKS · {WEEK_ID}</div>
-        <div style={{ marginBottom: 12 }}>
-          {[1, 2, 3].map(rank => {
-            const id = picks[rank - 1];
-            const idea = id ? ideas.find(i => i.id === id) : null;
-            return (
-              <div key={rank} style={{
-                display: 'flex', alignItems: 'center', gap: 8, padding: '8px 10px', marginBottom: 6,
-                background: idea ? 'var(--panel)' : 'var(--bg)',
-                border: `1px solid ${idea ? 'rgba(37,99,235,.25)' : 'var(--border)'}`,
-                borderRadius: 4, minHeight: 50,
-              }}>
-                <div style={{
-                  width: 22, height: 22, borderRadius: '50%',
-                  background: idea ? 'var(--accent)' : 'var(--border2)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 700, color: idea ? '#fff' : 'var(--text4)', flexShrink: 0,
-                }}>{rank}</div>
-                {idea ? (
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                      <DirBadge dir={idea.dir} />
-                      <span className="mono" style={{ fontSize: 11, fontWeight: 700 }}>{idea.ticker}</span>
-                    </div>
-                    <div style={{ fontSize: 9, color: 'var(--text3)' }}>Conv {idea.conv}/10 · +{idea.expRet}% target</div>
-                  </div>
-                ) : (
-                  <span style={{ fontSize: 10, color: 'var(--text4)', fontStyle: 'italic' }}>— empty slot —</span>
-                )}
-                {idea && (
-                  <button onClick={e => { e.stopPropagation(); toggle(id!); }} style={{ background: 'none', border: 'none', color: 'var(--short)', cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
-                )}
+      {phase === 'round2' && r1Users.size > 0 && (
+        <div style={{ padding: '7px 20px', background: 'rgba(37,99,235,.04)', borderBottom: '1px solid var(--border)', display: 'flex', gap: 16, alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 9, fontWeight: 700, color: 'var(--text3)', letterSpacing: '.06em' }}>R1 TOP IDEAS →</span>
+          {[...ideas].sort((a, b) => (r1Totals[b.id] ?? 0) - (r1Totals[a.id] ?? 0)).slice(0, 4).map((idea, i) => (
+            <div key={idea.id} style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 10 }}>
+              <span style={{ color: 'var(--accent)', fontWeight: 700 }}>#{i + 1}</span>
+              <span className="mono" style={{ fontWeight: 700 }}>{idea.ticker}</span>
+              <DirBadge dir={idea.dir} />
+              <span className="mono" style={{ color: 'var(--text3)' }}>${fmt(r1Totals[idea.id] ?? 0)}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 264px', flex: 1, overflow: 'hidden' }}>
+        {/* Feed */}
+        <div className="scroll-y" style={{ padding: 16, borderRight: '1px solid var(--border)' }}>
+          <div style={{ marginBottom: 12, fontSize: 10, color: 'var(--text3)' }}>
+            {hasSubmitted
+              ? `Round ${currentRound} ballot locked · Showing live team allocations`
+              : `Allocate your $${fmt(ROUND_BUDGET)} across ideas · Cannot allocate to your own ideas · Partial allocation allowed`}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            {ideas.map(idea => (
+              <IdeaCard
+                key={idea.id}
+                idea={idea}
+                isOwn={idea.authorId === legacyId}
+                inputVal={hasSubmitted ? '' : (inputVals[idea.id] ?? '')}
+                onInput={v => setInputVals(prev => ({ ...prev, [idea.id]: v }))}
+                teamTotal={teamTotal(idea)}
+                hasSubmitted={hasSubmitted}
+                lockedAmt={myAllocs.find(a => a.ideaId === idea.id)?.amount ?? 0}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Sidebar */}
+        <div className="scroll-y" style={{ padding: 16, background: 'var(--panel2)' }}>
+          <div className="sec-title" style={{ marginBottom: 10 }}>
+            {hasSubmitted ? `ROUND ${currentRound} LOCKED` : `ROUND ${currentRound} BUDGET`}
+          </div>
+          <div style={{ padding: '12px 14px', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 6, marginBottom: 14 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 9, color: 'var(--text4)' }}>BUDGET</span>
+              <span className="mono" style={{ fontSize: 11, fontWeight: 700 }}>${fmt(ROUND_BUDGET)}</span>
+            </div>
+            {!hasSubmitted && (
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                  <span style={{ fontSize: 9, color: 'var(--text4)' }}>STAGED</span>
+                  <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: stagedTotal > 0 ? 'var(--accent)' : 'var(--text4)' }}>${fmt(stagedTotal)}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <span style={{ fontSize: 9, color: 'var(--text4)' }}>REMAINING</span>
+                  <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: remaining < 0 ? 'var(--short)' : 'var(--long)' }}>${fmt(Math.max(0, remaining))}</span>
+                </div>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{ width: `${Math.min(100, (stagedTotal / ROUND_BUDGET) * 100)}%`, background: remaining < 0 ? 'var(--short)' : 'var(--accent)' }} />
+                </div>
+              </>
+            )}
+            {hasSubmitted && (
+              <div style={{ fontSize: 10, color: 'var(--long)', fontWeight: 600 }}>
+                ${fmt(myAllocs.reduce((s, a) => s + a.amount, 0))} across {myAllocs.length} idea{myAllocs.length !== 1 ? 's' : ''}
               </div>
-            );
-          })}
+            )}
+          </div>
+
+          {sidebarItems.length > 0 && (
+            <div style={{ marginBottom: 14 }}>
+              <div className="sec-title" style={{ marginBottom: 8 }}>MY ALLOCATIONS</div>
+              {sidebarItems.sort((a, b) => b.amount - a.amount).map(({ ideaId, amount }) => {
+                const idea = ideas.find(i => i.id === ideaId);
+                if (!idea) return null;
+                return (
+                  <div key={ideaId} style={{ display: 'flex', alignItems: 'center', padding: '7px 10px', marginBottom: 4, background: 'var(--panel)', border: '1px solid rgba(37,99,235,.18)', borderRadius: 4 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 1 }}>
+                        <DirBadge dir={idea.dir} />
+                        <span className="mono" style={{ fontSize: 11, fontWeight: 700 }}>{idea.ticker}</span>
+                      </div>
+                      <div style={{ fontSize: 9, color: 'var(--text4)' }}>{ideaId}</div>
+                    </div>
+                    <span className="mono" style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>${fmt(amount)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {!hasSubmitted ? (
+            <>
+              {remaining < 0 && (
+                <div style={{ fontSize: 9, color: 'var(--short)', background: 'var(--short-dim)', padding: '5px 8px', borderRadius: 4, marginBottom: 8, border: '1px solid rgba(220,38,38,.2)' }}>
+                  Over budget by ${fmt(Math.abs(remaining))} — reduce allocations
+                </div>
+              )}
+              <button
+                className="btn btn-primary"
+                style={{ width: '100%', justifyContent: 'center', padding: 10, opacity: stagedTotal === 0 || remaining < 0 ? 0.4 : 1 }}
+                disabled={stagedTotal === 0 || remaining < 0}
+                onClick={lockBallot}
+              >
+                LOCK ROUND {currentRound} BALLOT →
+              </button>
+              <div style={{ fontSize: 9, color: 'var(--text4)', textAlign: 'center', marginTop: 6 }}>
+                Immutable after submission · Partial allocation OK
+              </div>
+            </>
+          ) : (
+            <div style={{ padding: 14, background: 'var(--long-dim)', border: '1px solid rgba(22,163,74,.2)', borderRadius: 6, textAlign: 'center' }}>
+              <div style={{ fontSize: 20, marginBottom: 4, color: 'var(--long)' }}>✓</div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--long)' }}>Round {currentRound} Locked</div>
+              <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>Immutable · Audit logged</div>
+            </div>
+          )}
+
+          <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 6 }}>
+            <div className="sec-title" style={{ marginBottom: 8 }}>LIVE MARKET · R{currentRound}</div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 9, color: 'var(--text4)' }}>TEAM DEPLOYED</span>
+              <span className="mono" style={{ fontSize: 10, fontWeight: 600 }}>${fmt(totalAlloc)}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+              <span style={{ fontSize: 9, color: 'var(--text4)' }}>ANALYSTS DONE</span>
+              <span className="mono" style={{ fontSize: 10, fontWeight: 600 }}>{participants}/{totalMembers}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontSize: 9, color: 'var(--text4)' }}>AVG ALLOCATION</span>
+              <span className="mono" style={{ fontSize: 10, fontWeight: 600 }}>
+                {participants > 0 ? `$${fmt(Math.round(totalAlloc / participants))}` : '—'}
+              </span>
+            </div>
+          </div>
         </div>
-        <div style={{ padding: '7px 10px', background: 'var(--bg)', borderRadius: 4, border: '1px solid var(--border)', marginBottom: 14, fontSize: 10, color: 'var(--text3)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span><span style={{ color: picks.length >= 2 ? 'var(--long)' : 'var(--warn)', fontWeight: 700, fontFamily: 'var(--mono)' }}>{picks.length}/3</span> selected</span>
-          <span style={{ color: 'var(--text4)' }}>min 2 required</span>
-        </div>
-        <button
-          className="btn btn-primary"
-          style={{ width: '100%', justifyContent: 'center', padding: 10, marginBottom: 6, opacity: picks.length < 2 ? 0.5 : 1 }}
-          disabled={picks.length < 2}
-          onClick={submit}
-        >
-          SUBMIT BALLOT →
-        </button>
-        <div style={{ fontSize: 9, color: 'var(--text4)', textAlign: 'center' }}>Immutable after submission · Audit logged · {WEEK_ID}</div>
       </div>
     </div>
   );

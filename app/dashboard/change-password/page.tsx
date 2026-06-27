@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useApp } from '@/context/AppContext';
-import { verifyPassword, setPassword } from '@/lib/auth';
 
 export default function ChangePasswordPage() {
   const { user } = useApp();
@@ -11,27 +10,38 @@ export default function ChangePasswordPage() {
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const [done, setDone] = useState(false);
 
   if (!user) return null;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     setError('');
-    if (!verifyPassword(user.id, currentPwd)) { setError('Current password is incorrect.'); return; }
-    if (newPwd.length < 8) { setError('New password must be at least 8 characters.'); return; }
-    if (!/[A-Z]/.test(newPwd)) { setError('Password must contain at least one uppercase letter.'); return; }
-    if (!/[0-9]/.test(newPwd)) { setError('Password must contain at least one number.'); return; }
     if (newPwd !== confirmPwd) { setError('Passwords do not match.'); return; }
-    if (newPwd === currentPwd) { setError('New password must differ from current password.'); return; }
-    setPassword(user.id, newPwd);
-    setDone(true);
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: currentPwd, newPassword: newPwd }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) { setError(data.error ?? 'Failed to change password.'); return; }
+      setDone(true);
+    } catch {
+      setError('Network error. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (done) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 14 }}>
       <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--long-dim)', border: '1px solid rgba(34,197,94,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: 'var(--long)' }}>✓</div>
       <div style={{ fontSize: 15, fontWeight: 700 }}>Password Updated</div>
-      <div style={{ fontSize: 11, color: 'var(--text3)' }}>Your new password is active for future logins on this device.</div>
+      <div style={{ fontSize: 11, color: 'var(--text3)' }}>Your new password is active. You&apos;ve been signed out of all other sessions.</div>
       <button className="btn btn-ghost btn-sm" style={{ marginTop: 8 }} onClick={() => router.push('/dashboard')}>Back to Dashboard</button>
     </div>
   );
@@ -41,7 +51,7 @@ export default function ChangePasswordPage() {
       <div style={{ width: 400 }}>
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Change Password</div>
-          <div style={{ fontSize: 10, color: 'var(--text3)' }}>Update your Research Ballot login password · stored locally on this device</div>
+          <div style={{ fontSize: 10, color: 'var(--text3)' }}>Update your Research Ballot login password · expires every 90 days</div>
         </div>
         <div className="panel" style={{ padding: 20 }}>
           <div style={{ marginBottom: 12 }}>
@@ -50,7 +60,7 @@ export default function ChangePasswordPage() {
           </div>
           <div style={{ marginBottom: 12 }}>
             <div className="form-label">NEW PASSWORD</div>
-            <input className="inp" type="password" placeholder="Min. 8 chars, 1 uppercase, 1 number" value={newPwd} onChange={e => setNewPwd(e.target.value)} />
+            <input className="inp" type="password" placeholder="Min. 12 chars, uppercase, lowercase, number, symbol" value={newPwd} onChange={e => setNewPwd(e.target.value)} />
           </div>
           <div style={{ marginBottom: 16 }}>
             <div className="form-label">CONFIRM NEW PASSWORD</div>
@@ -61,11 +71,16 @@ export default function ChangePasswordPage() {
               {error}
             </div>
           )}
-          <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: '10px' }} onClick={handleSubmit}>
-            UPDATE PASSWORD →
+          <button
+            className="btn btn-primary"
+            style={{ width: '100%', justifyContent: 'center', padding: '10px', opacity: loading ? 0.6 : 1 }}
+            onClick={handleSubmit}
+            disabled={loading || !currentPwd || !newPwd || !confirmPwd}
+          >
+            {loading ? 'UPDATING…' : 'UPDATE PASSWORD →'}
           </button>
           <div style={{ marginTop: 10, fontSize: 9, color: 'var(--text4)', textAlign: 'center' }}>
-            Passwords are stored per-browser · Audit logged
+            Argon2id hashed · Cannot reuse last 10 passwords · Audit logged
           </div>
         </div>
       </div>

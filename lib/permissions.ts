@@ -16,13 +16,13 @@ const PERM: Record<Permission, string[]> = {
   auditLog: ['CIO'],
   antiGaming: ['CIO'],
   security: ['CIO'],
-  revealIdentities: ['CIO'],
+  revealIdentities: ['CIO', 'PM'],
   approveTrades: ['CIO', 'PM'],
   adjustAllocations: ['CIO', 'PM'],
-  viewPortfolio: ['CIO', 'PM'],
-  viewAnalystPerf: ['CIO', 'PM'],
-  submitIdeas: ['CIO', 'PM'],
-  vote: ['CIO', 'PM'],
+  viewPortfolio: ['CIO', 'PM', 'SR_ANALYST'],
+  viewAnalystPerf: ['CIO', 'PM', 'SR_ANALYST'],
+  submitIdeas: ['CIO', 'PM', 'SR_ANALYST', 'ANALYST'],
+  vote: ['CIO', 'PM', 'SR_ANALYST', 'ANALYST'],
 };
 
 export const can = (user: User | null, p: Permission): boolean => {
@@ -34,6 +34,8 @@ export const can = (user: User | null, p: Permission): boolean => {
 export const ROLE_COLOR: Record<string, string> = {
   CIO: 'var(--purple)',
   PM: 'var(--accent)',
+  SR_ANALYST: 'var(--long)',
+  ANALYST: 'var(--text3)',
 };
 
 export const TIER_W: Record<string, number> = {

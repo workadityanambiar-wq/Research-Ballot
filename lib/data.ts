@@ -1,4 +1,4 @@
-import type { User, Idea, PortfolioPosition, VoteMap, AuditEntry, Session, GamingFlag, TickerItem } from './types';
+import type { User, Idea, PortfolioPosition, VoteMap, AuditEntry, Session, GamingFlag, TickerItem, Phase, Allocation } from './types';
 
 export const USERS: User[] = [
   { id: 'arun.john', email: 'arun@century.ae', name: 'Arun Leslie John', title: 'Chief Market Analyst', role: 'CIO', tier: 'A+', hitRate: 73, avgRet: 18.4, sharpe: 1.82, drawCtrl: 91, consistency: 88, peerScore: 94, ideaScore: 88, allocScore: 92, researchScore: 91 },
@@ -107,6 +107,102 @@ export const TICKERS: TickerItem[] = [
   { sym: 'META', val: '520.80', chg: '+0.73%', up: true },
 ];
 
-export const TEMP_PASSWORD = 'Apex@2025';
 export const WEEK_ID = 'W26-2025';
 export const IDEA_LIMIT_PER_WEEK = 2;
+export const ROUND_BUDGET = 5000;
+
+// IST = UTC+5:30. Phase windows (times in IST):
+//   Sat 09:00 → Mon 16:30  round1        ($5k budget released)
+//   Mon 16:30 → Wed 09:00  round1_closed (attribution revealed)
+//   Wed 09:00 → Thu 16:30  round2        ($5k more released)
+//   Thu 16:30 → Sat 09:00  results       (final results)
+export function getPhase(): Phase {
+  const now = new Date();
+  const ist = new Date(now.getTime() + 330 * 60 * 1000);
+  const day = ist.getUTCDay();
+  const mins = ist.getUTCHours() * 60 + ist.getUTCMinutes();
+  if (day === 6 && mins >= 540) return 'round1';
+  if (day === 0) return 'round1';
+  if (day === 1 && mins <= 990) return 'round1';
+  if (day === 1 && mins > 990) return 'round1_closed';
+  if (day === 2) return 'round1_closed';
+  if (day === 3 && mins < 540) return 'round1_closed';
+  if (day === 3 && mins >= 540) return 'round2';
+  if (day === 4 && mins <= 990) return 'round2';
+  return 'results';
+}
+
+// 12 of 16 analysts pre-submitted Round 1 (seed data for Sat Jun 27 ballot)
+export const ALLOCATIONS0: Allocation[] = [
+  // saakshi.shingare (author IDEA-002)
+  { id: 'AL-001', userId: 'saakshi.shingare', ideaId: 'IDEA-001', amount: 1000, round: 1, submittedAt: '2026-06-27T06:15Z', weekId: 'W26-2025' },
+  { id: 'AL-002', userId: 'saakshi.shingare', ideaId: 'IDEA-003', amount: 700,  round: 1, submittedAt: '2026-06-27T06:15Z', weekId: 'W26-2025' },
+  { id: 'AL-003', userId: 'saakshi.shingare', ideaId: 'IDEA-004', amount: 400,  round: 1, submittedAt: '2026-06-27T06:15Z', weekId: 'W26-2025' },
+  { id: 'AL-004', userId: 'saakshi.shingare', ideaId: 'IDEA-008', amount: 350,  round: 1, submittedAt: '2026-06-27T06:15Z', weekId: 'W26-2025' },
+  { id: 'AL-005', userId: 'saakshi.shingare', ideaId: 'IDEA-010', amount: 250,  round: 1, submittedAt: '2026-06-27T06:15Z', weekId: 'W26-2025' },
+  // devanshi.agrawal
+  { id: 'AL-006', userId: 'devanshi.agrawal', ideaId: 'IDEA-001', amount: 500,  round: 1, submittedAt: '2026-06-27T07:02Z', weekId: 'W26-2025' },
+  { id: 'AL-007', userId: 'devanshi.agrawal', ideaId: 'IDEA-002', amount: 400,  round: 1, submittedAt: '2026-06-27T07:02Z', weekId: 'W26-2025' },
+  { id: 'AL-008', userId: 'devanshi.agrawal', ideaId: 'IDEA-003', amount: 400,  round: 1, submittedAt: '2026-06-27T07:02Z', weekId: 'W26-2025' },
+  { id: 'AL-009', userId: 'devanshi.agrawal', ideaId: 'IDEA-006', amount: 1000, round: 1, submittedAt: '2026-06-27T07:02Z', weekId: 'W26-2025' },
+  { id: 'AL-010', userId: 'devanshi.agrawal', ideaId: 'IDEA-008', amount: 200,  round: 1, submittedAt: '2026-06-27T07:02Z', weekId: 'W26-2025' },
+  // labiba.angona (author IDEA-005)
+  { id: 'AL-011', userId: 'labiba.angona', ideaId: 'IDEA-001', amount: 600, round: 1, submittedAt: '2026-06-27T07:45Z', weekId: 'W26-2025' },
+  { id: 'AL-012', userId: 'labiba.angona', ideaId: 'IDEA-003', amount: 450, round: 1, submittedAt: '2026-06-27T07:45Z', weekId: 'W26-2025' },
+  { id: 'AL-013', userId: 'labiba.angona', ideaId: 'IDEA-004', amount: 450, round: 1, submittedAt: '2026-06-27T07:45Z', weekId: 'W26-2025' },
+  { id: 'AL-014', userId: 'labiba.angona', ideaId: 'IDEA-008', amount: 300, round: 1, submittedAt: '2026-06-27T07:45Z', weekId: 'W26-2025' },
+  { id: 'AL-015', userId: 'labiba.angona', ideaId: 'IDEA-009', amount: 300, round: 1, submittedAt: '2026-06-27T07:45Z', weekId: 'W26-2025' },
+  // jagpavit.bhurjee (author IDEA-007)
+  { id: 'AL-016', userId: 'jagpavit.bhurjee', ideaId: 'IDEA-001', amount: 1600, round: 1, submittedAt: '2026-06-27T08:20Z', weekId: 'W26-2025' },
+  { id: 'AL-017', userId: 'jagpavit.bhurjee', ideaId: 'IDEA-005', amount: 400,  round: 1, submittedAt: '2026-06-27T08:20Z', weekId: 'W26-2025' },
+  { id: 'AL-018', userId: 'jagpavit.bhurjee', ideaId: 'IDEA-006', amount: 500,  round: 1, submittedAt: '2026-06-27T08:20Z', weekId: 'W26-2025' },
+  { id: 'AL-019', userId: 'jagpavit.bhurjee', ideaId: 'IDEA-009', amount: 300,  round: 1, submittedAt: '2026-06-27T08:20Z', weekId: 'W26-2025' },
+  { id: 'AL-020', userId: 'jagpavit.bhurjee', ideaId: 'IDEA-010', amount: 500,  round: 1, submittedAt: '2026-06-27T08:20Z', weekId: 'W26-2025' },
+  // dhairya.jani
+  { id: 'AL-021', userId: 'dhairya.jani', ideaId: 'IDEA-002', amount: 400,  round: 1, submittedAt: '2026-06-27T08:55Z', weekId: 'W26-2025' },
+  { id: 'AL-022', userId: 'dhairya.jani', ideaId: 'IDEA-004', amount: 200,  round: 1, submittedAt: '2026-06-27T08:55Z', weekId: 'W26-2025' },
+  { id: 'AL-023', userId: 'dhairya.jani', ideaId: 'IDEA-006', amount: 250,  round: 1, submittedAt: '2026-06-27T08:55Z', weekId: 'W26-2025' },
+  { id: 'AL-024', userId: 'dhairya.jani', ideaId: 'IDEA-007', amount: 1800, round: 1, submittedAt: '2026-06-27T08:55Z', weekId: 'W26-2025' },
+  { id: 'AL-025', userId: 'dhairya.jani', ideaId: 'IDEA-008', amount: 150,  round: 1, submittedAt: '2026-06-27T08:55Z', weekId: 'W26-2025' },
+  // fenil.gala (author IDEA-009)
+  { id: 'AL-026', userId: 'fenil.gala', ideaId: 'IDEA-001', amount: 600, round: 1, submittedAt: '2026-06-27T09:10Z', weekId: 'W26-2025' },
+  { id: 'AL-027', userId: 'fenil.gala', ideaId: 'IDEA-003', amount: 800, round: 1, submittedAt: '2026-06-27T09:10Z', weekId: 'W26-2025' },
+  { id: 'AL-028', userId: 'fenil.gala', ideaId: 'IDEA-004', amount: 600, round: 1, submittedAt: '2026-06-27T09:10Z', weekId: 'W26-2025' },
+  { id: 'AL-029', userId: 'fenil.gala', ideaId: 'IDEA-006', amount: 400, round: 1, submittedAt: '2026-06-27T09:10Z', weekId: 'W26-2025' },
+  // kriti.toshniwal (author IDEA-010)
+  { id: 'AL-030', userId: 'kriti.toshniwal', ideaId: 'IDEA-002', amount: 750, round: 1, submittedAt: '2026-06-27T09:30Z', weekId: 'W26-2025' },
+  { id: 'AL-031', userId: 'kriti.toshniwal', ideaId: 'IDEA-003', amount: 900, round: 1, submittedAt: '2026-06-27T09:30Z', weekId: 'W26-2025' },
+  { id: 'AL-032', userId: 'kriti.toshniwal', ideaId: 'IDEA-004', amount: 400, round: 1, submittedAt: '2026-06-27T09:30Z', weekId: 'W26-2025' },
+  { id: 'AL-033', userId: 'kriti.toshniwal', ideaId: 'IDEA-006', amount: 500, round: 1, submittedAt: '2026-06-27T09:30Z', weekId: 'W26-2025' },
+  { id: 'AL-034', userId: 'kriti.toshniwal', ideaId: 'IDEA-009', amount: 500, round: 1, submittedAt: '2026-06-27T09:30Z', weekId: 'W26-2025' },
+  // vritti.shah (author IDEA-008)
+  { id: 'AL-035', userId: 'vritti.shah', ideaId: 'IDEA-001', amount: 800, round: 1, submittedAt: '2026-06-27T09:50Z', weekId: 'W26-2025' },
+  { id: 'AL-036', userId: 'vritti.shah', ideaId: 'IDEA-003', amount: 550, round: 1, submittedAt: '2026-06-27T09:50Z', weekId: 'W26-2025' },
+  { id: 'AL-037', userId: 'vritti.shah', ideaId: 'IDEA-004', amount: 350, round: 1, submittedAt: '2026-06-27T09:50Z', weekId: 'W26-2025' },
+  { id: 'AL-038', userId: 'vritti.shah', ideaId: 'IDEA-005', amount: 600, round: 1, submittedAt: '2026-06-27T09:50Z', weekId: 'W26-2025' },
+  { id: 'AL-039', userId: 'vritti.shah', ideaId: 'IDEA-006', amount: 300, round: 1, submittedAt: '2026-06-27T09:50Z', weekId: 'W26-2025' },
+  // kashish.dhanani
+  { id: 'AL-040', userId: 'kashish.dhanani', ideaId: 'IDEA-001', amount: 550, round: 1, submittedAt: '2026-06-27T10:05Z', weekId: 'W26-2025' },
+  { id: 'AL-041', userId: 'kashish.dhanani', ideaId: 'IDEA-002', amount: 450, round: 1, submittedAt: '2026-06-27T10:05Z', weekId: 'W26-2025' },
+  { id: 'AL-042', userId: 'kashish.dhanani', ideaId: 'IDEA-003', amount: 500, round: 1, submittedAt: '2026-06-27T10:05Z', weekId: 'W26-2025' },
+  { id: 'AL-043', userId: 'kashish.dhanani', ideaId: 'IDEA-004', amount: 500, round: 1, submittedAt: '2026-06-27T10:05Z', weekId: 'W26-2025' },
+  { id: 'AL-044', userId: 'kashish.dhanani', ideaId: 'IDEA-005', amount: 475, round: 1, submittedAt: '2026-06-27T10:05Z', weekId: 'W26-2025' },
+  { id: 'AL-045', userId: 'kashish.dhanani', ideaId: 'IDEA-006', amount: 300, round: 1, submittedAt: '2026-06-27T10:05Z', weekId: 'W26-2025' },
+  // meyyappan.lakshmanan (author IDEA-001)
+  { id: 'AL-046', userId: 'meyyappan.lakshmanan', ideaId: 'IDEA-003', amount: 1000, round: 1, submittedAt: '2026-06-27T10:25Z', weekId: 'W26-2025' },
+  { id: 'AL-047', userId: 'meyyappan.lakshmanan', ideaId: 'IDEA-004', amount: 1200, round: 1, submittedAt: '2026-06-27T10:25Z', weekId: 'W26-2025' },
+  { id: 'AL-048', userId: 'meyyappan.lakshmanan', ideaId: 'IDEA-005', amount: 900,  round: 1, submittedAt: '2026-06-27T10:25Z', weekId: 'W26-2025' },
+  { id: 'AL-049', userId: 'meyyappan.lakshmanan', ideaId: 'IDEA-008', amount: 600,  round: 1, submittedAt: '2026-06-27T10:25Z', weekId: 'W26-2025' },
+  // intissar.elkhadiri (author IDEA-003)
+  { id: 'AL-050', userId: 'intissar.elkhadiri', ideaId: 'IDEA-001', amount: 700, round: 1, submittedAt: '2026-06-27T10:45Z', weekId: 'W26-2025' },
+  { id: 'AL-051', userId: 'intissar.elkhadiri', ideaId: 'IDEA-004', amount: 800, round: 1, submittedAt: '2026-06-27T10:45Z', weekId: 'W26-2025' },
+  { id: 'AL-052', userId: 'intissar.elkhadiri', ideaId: 'IDEA-005', amount: 600, round: 1, submittedAt: '2026-06-27T10:45Z', weekId: 'W26-2025' },
+  { id: 'AL-053', userId: 'intissar.elkhadiri', ideaId: 'IDEA-006', amount: 650, round: 1, submittedAt: '2026-06-27T10:45Z', weekId: 'W26-2025' },
+  { id: 'AL-054', userId: 'intissar.elkhadiri', ideaId: 'IDEA-009', amount: 400, round: 1, submittedAt: '2026-06-27T10:45Z', weekId: 'W26-2025' },
+  // dnyanada.kulkarni (author IDEA-006)
+  { id: 'AL-055', userId: 'dnyanada.kulkarni', ideaId: 'IDEA-001', amount: 950, round: 1, submittedAt: '2026-06-27T11:00Z', weekId: 'W26-2025' },
+  { id: 'AL-056', userId: 'dnyanada.kulkarni', ideaId: 'IDEA-002', amount: 800, round: 1, submittedAt: '2026-06-27T11:00Z', weekId: 'W26-2025' },
+  { id: 'AL-057', userId: 'dnyanada.kulkarni', ideaId: 'IDEA-003', amount: 600, round: 1, submittedAt: '2026-06-27T11:00Z', weekId: 'W26-2025' },
+  { id: 'AL-058', userId: 'dnyanada.kulkarni', ideaId: 'IDEA-005', amount: 400, round: 1, submittedAt: '2026-06-27T11:00Z', weekId: 'W26-2025' },
+  { id: 'AL-059', userId: 'dnyanada.kulkarni', ideaId: 'IDEA-008', amount: 400, round: 1, submittedAt: '2026-06-27T11:00Z', weekId: 'W26-2025' },
+];

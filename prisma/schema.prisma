@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ──────────────────────────────────────────────
+// Auth.js required models (Prisma adapter v2)
+// ──────────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ──────────────────────────────────────────────
+// Core models
+// ──────────────────────────────────────────────
+
+model User {
+  id                String    @id @default(cuid())
+  // Auth.js required fields
+  name              String?
+  email             String?   @unique
+  emailVerified     DateTime?
+  image             String?
+  accounts          Account[]
+  sessions          Session[]
+
+  // Century Financial fields
+  legacyId          String    @unique  // maps to old id like 'arun.john'
+  displayName       String
+  title             String
+  role              Role
+  tier              Tier
+  passwordHash      String
+  passwordChangedAt DateTime?           // null = never changed (force change on next login)
+  passwordExpiresAt DateTime?
+  failedAttempts    Int       @default(0)
+  lockedUntil       DateTime?
+  mfaEnabled        Boolean   @default(false)
+  mfaSecret         String?             // AES-256-GCM encrypted TOTP secret
+  mfaEnrolledAt     DateTime?
+  pendingMfaSecret  String?             // Temp secret during enrollment flow
+
+  // Performance metrics
+  hitRate           Float     @default(0)
+  avgRet            Float     @default(0)
+  sharpe            Float     @default(0)
+  drawCtrl          Float     @default(0)
+  consistency       Float     @default(0)
+  peerScore         Float     @default(0)
+  ideaScore         Float     @default(0)
+  allocScore        Float     @default(0)
+  researchScore     Float     @default(0)
+
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  passwordHistory   PasswordHistory[]
+  resetTokens       PasswordResetToken[]
+  mfaTokens         MfaToken[]
+  auditLogs         AuditLog[]
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  // Extra tracking fields
+  userAgent    String?
+  ipAddress    String?
+  createdAt    DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// Short-lived token for MFA step-2 after password validation
+model MfaToken {
+  id        String   @id @default(cuid())
+  userId    String
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id        String      @id @default(cuid())
+  userId    String?
+  action    AuditAction
+  detail    String      @db.Text
+  ipAddress String?
+  device    String?
+  risk      RiskLevel   @default(LOW)
+  createdAt DateTime    @default(now())
+  user      User?       @relation(fields: [userId], references: [id], onDelete: SetNull)
+}
+
+// ──────────────────────────────────────────────
+// Enums
+// ──────────────────────────────────────────────
+
+enum Role {
+  CIO
+  PM
+  SR_ANALYST
+  ANALYST
+}
+
+enum Tier {
+  A_PLUS
+  A
+  B
+}
+
+enum AuditAction {
+  LOGIN_SUCCESS
+  LOGIN_FAILED
+  LOGIN_MFA_SUCCESS
+  LOGIN_MFA_FAILED
+  LOGOUT
+  SESSION_TERMINATED
+  PASSWORD_CHANGED
+  PASSWORD_RESET_REQUESTED
+  PASSWORD_RESET_COMPLETED
+  MFA_ENROLLED
+  ACCOUNT_LOCKED
+  ACCOUNT_UNLOCKED
+  IDEA_SUBMITTED
+  TRADE_APPROVED
+  BALLOT_SUBMITTED
+  PERMISSION_CHANGE
+}
+
+enum RiskLevel {
+  LOW
+  MEDIUM
+  HIGH
+}

@@ -8,7 +8,7 @@ export default function SubmitPage() {
   const { user, ideas, setIdeas } = useApp();
   if (!user) return null;
 
-  const wkCount = ideas.filter(i => i.authorId === user.id && i.weekId === WEEK_ID).length;
+  const wkCount = ideas.filter(i => i.authorId === user.legacyId && i.weekId === WEEK_ID).length;
   const [f, setF] = useState({ ticker: '', assetClass: 'US Equities', dir: 'LONG', entry: '', stop: '', target: '', hold: '1-3M', posSize: '', conv: 7, expRet: '', expDD: '', thesis: '', catalysts: '', risks: '' });
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [imgDrag, setImgDrag] = useState(false);
@@ -37,7 +37,7 @@ export default function SubmitPage() {
       posSize: parseFloat(f.posSize) || 1, conv: f.conv, expRet: parseFloat(f.expRet) || 0,
       expDD: parseFloat(f.expDD) || 0, rr: parseFloat(rr) || 0,
       thesis: f.thesis, catalysts: f.catalysts.split('\n').filter(Boolean), risks: f.risks.split('\n').filter(Boolean),
-      authorId: user.id, submittedAt: new Date().toISOString(), weekId: WEEK_ID, status: 'ACTIVE', totalCredits: 0,
+      authorId: user.legacyId, submittedAt: new Date().toISOString(), weekId: WEEK_ID, status: 'ACTIVE', totalCredits: 0,
       rank: prev.length + 1, pmScore: 0, skillScore: 0, rrScore: 0, quantScore: 0, finalScore: 0,
       momentumScore: 0, rsScore: 0, earningRevScore: 0, approvalStatus: 'PENDING',
       ...(imageUrl ? { imageUrl } : {}),

@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import type { User } from '@/lib/types';
+import type { AuthUser } from '@/context/AppContext';
 import { ROLE_COLOR } from '@/lib/permissions';
 import { TierBadge } from '@/components/ui/Badge';
 
@@ -28,7 +28,7 @@ const NAV: NavEntry[] = [
   { id: 'security', label: 'Security Dashboard', icon: '⛨', href: '/dashboard/security', cioOnly: true },
 ];
 
-export default function Sidebar({ user, onLogout }: { user: User; onLogout: () => void }) {
+export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
   const pathname = usePathname();
   const isCio = user.role === 'CIO';
   const initials = user.name.split(' ').map(n => n[0]).join('');
@@ -61,7 +61,7 @@ export default function Sidebar({ user, onLogout }: { user: User; onLogout: () =
           <TierBadge tier={user.tier} />
         </div>
         <div style={{ marginTop: 6, display: 'flex', alignItems: 'center', gap: 5, fontSize: 9, color: 'var(--text4)' }}>
-          <span className="dot dot-green" />ACTIVE · MFA ✓
+          <span className="dot dot-green" />ACTIVE{user.mfaEnabled ? ' · MFA ✓' : ''}
         </div>
       </div>
 
@@ -85,7 +85,7 @@ export default function Sidebar({ user, onLogout }: { user: User; onLogout: () =
       </div>
 
       <div style={{ padding: '12px', borderTop: '1px solid var(--border)' }}>
-        <div className="mono" style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 8 }}>W26-2025 · {user.id}</div>
+        <div className="mono" style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 8 }}>W26-2025 · {user.legacyId}</div>
         <Link href="/dashboard/change-password" style={{ textDecoration: 'none', display: 'block', marginBottom: 6 }}>
           <div className={`nav-item ${pathname === '/dashboard/change-password' ? 'active' : ''}`} style={{ padding: '5px 8px', fontSize: 10 }}>
             <span style={{ fontSize: 11, width: 14, textAlign: 'center', opacity: .7 }}>🔑</span>

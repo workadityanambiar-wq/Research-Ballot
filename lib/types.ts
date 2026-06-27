@@ -1,4 +1,4 @@
-export type Role = 'CIO' | 'PM';
+export type Role = 'CIO' | 'PM' | 'SR_ANALYST' | 'ANALYST';
 export type Tier = 'A+' | 'A' | 'B';
 export type ApprovalStatus = 'APPROVED' | 'PENDING' | 'REVIEW' | 'REJECTED';
 export type Direction = 'LONG' | 'SHORT';
@@ -108,4 +108,16 @@ export interface TickerItem {
   val: string;
   chg: string;
   up: boolean;
+}
+
+export type Phase = 'round1' | 'round1_closed' | 'round2' | 'results';
+
+export interface Allocation {
+  id: string;
+  userId: string;
+  ideaId: string;
+  amount: number;
+  round: 1 | 2;
+  submittedAt: string;
+  weekId: string;
 }
