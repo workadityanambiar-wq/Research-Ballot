@@ -14,6 +14,13 @@ import { checkLoginRateLimit } from '@/lib/rate-limit';
 import { sendAccountLockedEmail, sendNewDeviceLoginEmail } from '@/lib/email';
 
 export async function POST(req: NextRequest) {
+  try { return await _post(req); } catch (e) {
+    const msg = e instanceof Error ? `${e.name}: ${e.message}\n${e.stack}` : String(e);
+    console.error('[pre-login crash]', msg);
+    return NextResponse.json({ error: 'Internal error', detail: msg }, { status: 500 });
+  }
+}
+async function _post(req: NextRequest) {
   const headersList = await headers();
   const ip = headersList.get('x-forwarded-for')?.split(',')[0]?.trim() ?? req.headers.get('x-real-ip') ?? 'unknown';
   const userAgent = headersList.get('user-agent') ?? 'unknown';
