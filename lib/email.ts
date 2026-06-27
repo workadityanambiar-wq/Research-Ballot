@@ -1,13 +1,14 @@
 import { Resend } from 'resend';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 const FROM = process.env.RESEND_FROM ?? 'Century Financial <noreply@century.ae>';
 
 async function send(to: string, subject: string, html: string) {
-  if (!process.env.RESEND_API_KEY || process.env.RESEND_API_KEY.startsWith('re_REPLACE')) {
+  const key = process.env.RESEND_API_KEY;
+  if (!key || key.startsWith('re_REPLACE')) {
     console.log(`[EMAIL DEV] To: ${to} | Subject: ${subject}`);
     return;
   }
+  const resend = new Resend(key);
   await resend.emails.send({ from: FROM, to, subject, html });
 }
 
