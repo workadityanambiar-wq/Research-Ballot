@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { signIn } from '@/lib/auth-config';
 import { prisma } from '@/lib/db';
 import {
   verifyPasswordHash,
@@ -10,6 +9,7 @@ import {
   LOCKOUT_MINUTES_TIER1,
   LOCKOUT_MINUTES_TIER2,
 } from '@/lib/auth-helpers';
+import { createDbSession, attachSessionCookie } from '@/lib/session-helpers';
 import { checkLoginRateLimit } from '@/lib/rate-limit';
 import { sendAccountLockedEmail, sendNewDeviceLoginEmail } from '@/lib/email';
 
@@ -84,18 +84,18 @@ export async function POST(req: NextRequest) {
   // Clear failed attempts on success
   await prisma.user.update({ where: { id: user.id }, data: { failedAttempts: 0, lockedUntil: null } });
 
-  // Password never changed → sign in, then redirect to set-password
+  // Password never changed → create session, then redirect to set-password
   if (!user.passwordChangedAt) {
-    await signIn('credentials', { userId: user.id, redirect: false });
+    const { token, expires } = await createDbSession(user.id);
     await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_SUCCESS', detail: 'Login success — first-login password change required', ipAddress: ip, device: userAgent, risk: 'MEDIUM' } });
-    return NextResponse.json({ mustChangePassword: true });
+    return attachSessionCookie(NextResponse.json({ mustChangePassword: true }), token, expires);
   }
 
-  // Password expired → sign in, then redirect to change-password
+  // Password expired → create session, then redirect to change-password
   if (user.passwordExpiresAt && user.passwordExpiresAt < new Date()) {
-    await signIn('credentials', { userId: user.id, redirect: false });
+    const { token, expires } = await createDbSession(user.id);
     await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_SUCCESS', detail: 'Login success — password expired', ipAddress: ip, device: userAgent, risk: 'MEDIUM' } });
-    return NextResponse.json({ passwordExpired: true });
+    return attachSessionCookie(NextResponse.json({ passwordExpired: true }), token, expires);
   }
 
   // MFA required?
@@ -110,16 +110,15 @@ export async function POST(req: NextRequest) {
 
   // MFA enrollment required for CIO/PM
   if ((user.role === 'CIO' || user.role === 'PM') && !user.mfaEnrolledAt) {
-    // Sign in, but redirect to MFA setup
-    await signIn('credentials', { userId: user.id, redirect: false });
+    const { token, expires } = await createDbSession(user.id);
     await sendNewDeviceLoginEmail(user.email!, user.displayName, ip, userAgent, new Date().toUTCString());
     await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_SUCCESS', detail: 'Login success — MFA enrollment required', ipAddress: ip, device: userAgent, risk: 'MEDIUM' } });
-    return NextResponse.json({ mustEnrollMfa: true });
+    return attachSessionCookie(NextResponse.json({ mustEnrollMfa: true }), token, expires);
   }
 
-  // No MFA needed — sign in directly
-  await signIn('credentials', { userId: user.id, redirect: false });
+  // No MFA needed — create session directly
+  const { token, expires } = await createDbSession(user.id);
   await sendNewDeviceLoginEmail(user.email!, user.displayName, ip, userAgent, new Date().toUTCString());
   await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_SUCCESS', detail: 'Login success', ipAddress: ip, device: userAgent, risk: 'LOW' } });
-  return NextResponse.json({ success: true });
+  return attachSessionCookie(NextResponse.json({ success: true }), token, expires);
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
-import { signIn } from '@/lib/auth-config';
 import { prisma } from '@/lib/db';
+import { createDbSession, attachSessionCookie } from '@/lib/session-helpers';
 import { hashToken, verifyTotpCode, decryptTotpSecret } from '@/lib/auth-helpers';
 import { sendNewDeviceLoginEmail } from '@/lib/email';
 
@@ -45,9 +45,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid authenticator code.' }, { status: 401 });
   }
 
-  await signIn('credentials', { userId: user.id, redirect: false });
+  const { token, expires } = await createDbSession(user.id);
   await sendNewDeviceLoginEmail(user.email!, user.displayName, ip, userAgent, new Date().toUTCString());
   await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_MFA_SUCCESS', detail: 'MFA verification passed', ipAddress: ip, device: userAgent, risk: 'LOW' } });
 
-  return NextResponse.json({ success: true });
+  return attachSessionCookie(NextResponse.json({ success: true }), token, expires);
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { headers } from 'next/headers';
 import { auth } from '@/lib/auth-config';
 import { prisma } from '@/lib/db';
+import { createDbSession, attachSessionCookie } from '@/lib/session-helpers';
 import {
   verifyPasswordHash,
   hashPassword,
@@ -92,5 +93,7 @@ export async function POST(req: NextRequest) {
 
   await sendPasswordChangedEmail(user.email!, user.displayName, now.toUTCString());
 
-  return NextResponse.json({ success: true });
+  // Create a fresh session so the user stays logged in after the password change
+  const { token, expires } = await createDbSession(user.id);
+  return attachSessionCookie(NextResponse.json({ success: true }), token, expires);
 }
