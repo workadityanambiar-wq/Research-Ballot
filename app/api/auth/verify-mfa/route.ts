@@ -35,7 +35,7 @@ export async function POST(req: NextRequest) {
   }
 
   const secret = decryptTotpSecret(user.mfaSecret);
-  const valid = verifyTotpCode(secret, totpCode.trim());
+  const valid = await verifyTotpCode(secret, totpCode.trim());
 
   // Delete the one-time MFA token regardless of outcome
   await prisma.mfaToken.delete({ where: { tokenHash } });

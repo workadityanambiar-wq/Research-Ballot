@@ -1,6 +1,6 @@
-import type { Direction, Tier } from '@/lib/types';
+import type { Direction } from '@/lib/types';
 
-export const TierBadge = ({ tier }: { tier: Tier }) => {
+export const TierBadge = ({ tier }: { tier: string }) => {
   const cls = { 'A+': 'badge badge-purple', A: 'badge badge-accent', B: 'badge badge-low', C: 'badge badge-warn' }[tier] ?? 'badge badge-dim';
   return <span className={cls}>{tier}</span>;
 };

@@ -1,8 +1,10 @@
 import 'dotenv/config';
-import { PrismaClient } from '../lib/generated/prisma';
+import { PrismaClient } from '../lib/generated/prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { hash } from '@node-rs/argon2';
 
-const prisma = new PrismaClient();
+const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL ?? '' });
+const prisma = new PrismaClient({ adapter });
 
 const TEMP_PASSWORD = 'Apex@2025';
 

@@ -1,5 +1,3 @@
-import type { User } from './types';
-
 type Permission =
   | 'auditLog'
   | 'antiGaming'
@@ -25,7 +23,7 @@ const PERM: Record<Permission, string[]> = {
   vote: ['CIO', 'PM', 'SR_ANALYST', 'ANALYST'],
 };
 
-export const can = (user: User | null, p: Permission): boolean => {
+export const can = (user: { role: string } | null, p: Permission): boolean => {
   if (!user) return false;
   if (user.role === 'CIO') return true;
   return PERM[p]?.includes(user.role) ?? false;

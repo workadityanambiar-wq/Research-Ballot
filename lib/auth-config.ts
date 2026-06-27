@@ -2,7 +2,7 @@ import NextAuth from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
 import { PrismaAdapter } from '@auth/prisma-adapter';
 import { prisma } from '@/lib/db';
-import type { Role } from '@/lib/generated/prisma';
+import type { Role } from '@/lib/types';
 
 // Extend the built-in session/token types to carry our custom fields
 declare module 'next-auth' {

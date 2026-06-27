@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'No pending MFA setup found. Start setup again.' }, { status: 400 });
   }
 
-  const valid = verifyTotpCode(user.pendingMfaSecret, totpCode.trim());
+  const valid = await verifyTotpCode(user.pendingMfaSecret, totpCode.trim());
   if (!valid) {
     return NextResponse.json({ error: 'Invalid code. Make sure your device time is correct.' }, { status: 401 });
   }

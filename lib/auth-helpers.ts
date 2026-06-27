@@ -1,5 +1,13 @@
 import { hash, verify } from '@node-rs/argon2';
-import { totp } from 'otplib';
+// otplib v13 uses functional async API — no singleton `totp` export
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { generateSecret: otpGenerateSecret, generate: otpGenerate, verify: otpVerify, generateURI } =
+  require('otplib') as {
+    generateSecret: (size: number) => string;
+    generate: (opts: { secret: string }) => Promise<string>;
+    verify: (opts: { token: string; secret: string }) => Promise<{ valid: boolean }>;
+    generateURI: (opts: { type: string; label: string; issuer: string; secret: string }) => Promise<string>;
+  };
 import { randomBytes, createCipheriv, createDecipheriv, createHash } from 'crypto';
 
 const ARGON2_OPTS = {
@@ -26,19 +34,18 @@ export function hashToken(token: string): string {
 
 // ─── TOTP ────────────────────────────────────────────────────────────────────
 
-totp.options = { step: 30, digits: 6 };
-
 export function generateTotpSecret(): string {
-  return randomBytes(20).toString('base32').replace(/=/g, '');
+  return otpGenerateSecret(20);
 }
 
-export function verifyTotpCode(secret: string, code: string): boolean {
-  return totp.check(code, secret);
+export async function verifyTotpCode(secret: string, code: string): Promise<boolean> {
+  const result = await otpVerify({ token: code, secret });
+  return result.valid;
 }
 
-export function getTotpUri(email: string, secret: string): string {
+export async function getTotpUri(email: string, secret: string): Promise<string> {
   const issuer = process.env.TOTP_ISSUER ?? 'Century Financial';
-  return totp.keyuri(email, issuer, secret);
+  return generateURI({ type: 'totp', label: email, issuer, secret });
 }
 
 // ─── TOTP secret encryption (AES-256-GCM) ────────────────────────────────────
