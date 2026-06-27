@@ -1,13 +1,13 @@
 'use client';
 import { useApp } from '@/context/AppContext';
-import { GAMING, USERS } from '@/lib/data';
+import { USERS } from '@/lib/data';
 import { SevBadge } from '@/components/ui/Badge';
 import { StatCard } from '@/components/ui/StatCard';
 import { Bar } from '@/components/ui/Bar';
 import { NetworkGraph } from '@/components/ui/Charts';
 
 export default function GamingPage() {
-  const { user } = useApp();
+  const { user, gamingFlags, votingIntegrity } = useApp();
   if (!user || user.role !== 'CIO') return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <div className="panel" style={{ padding: 32, textAlign: 'center', maxWidth: 340 }}>
@@ -17,6 +17,10 @@ export default function GamingPage() {
       </div>
     </div>
   );
+
+  const highCount = gamingFlags.filter(g => g.sev === 'HIGH').length;
+  const avgScore = gamingFlags.length ? Math.round(gamingFlags.reduce((s, f) => s + f.score, 0) / gamingFlags.length) : 0;
+  const collusionIdx = Math.max(0, Math.round(100 - votingIntegrity));
 
   const nodes = [
     { id: 'jagpavit.bhurjee', label: 'JB', x: 80, y: 60, f: true, r: 9 },
@@ -45,23 +49,30 @@ export default function GamingPage() {
     <div className="scroll-y" style={{ height: '100%', padding: 16 }}>
       <div className="sec-hdr" style={{ marginBottom: 14 }}>
         <div><div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Anti-Gaming Engine</div><div style={{ fontSize: 10, color: 'var(--text3)' }}>Behavioral surveillance · Collusion detection · Voting integrity · CIO eyes only</div></div>
-        <div style={{ display: 'flex', gap: 8 }}><span className="badge badge-high pulse">2 HIGH RISK</span><span className="badge badge-dim">W26-2025</span></div>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {highCount > 0 && <span className="badge badge-high pulse">{highCount} HIGH RISK</span>}
+          <span className="badge badge-dim">W26-2025</span>
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 14 }}>
-        <StatCard label="Active Flags" value={GAMING.length} color="var(--short)" sub="W26-2025" />
-        <StatCard label="High Severity" value={GAMING.filter(g => g.sev === 'HIGH').length} color="var(--short)" sub="Require review" />
-        <StatCard label="Avg Gaming Score" value="64" color="var(--warn)" sub="/ 100" />
-        <StatCard label="Voting Integrity" value="74.2" color="var(--accent)" sub="/ 100" />
+        <StatCard label="Active Flags" value={gamingFlags.length} color="var(--short)" sub="W26-2025" />
+        <StatCard label="High Severity" value={highCount} color="var(--short)" sub="Require review" />
+        <StatCard label="Avg Gaming Score" value={avgScore || '—'} color="var(--warn)" sub="/ 100" />
+        <StatCard label="Voting Integrity" value={votingIntegrity.toFixed(1)} color="var(--accent)" sub="/ 100" />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
         <div className="panel">
           <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="sec-title">BEHAVIORAL FLAGS</span>
-            <span className="badge badge-high" style={{ marginLeft: 'auto' }}>ACTION REQUIRED</span>
+            {highCount > 0 && <span className="badge badge-high" style={{ marginLeft: 'auto' }}>ACTION REQUIRED</span>}
+            {highCount === 0 && <span className="badge badge-dim" style={{ marginLeft: 'auto' }}>CLEAR</span>}
           </div>
-          {GAMING.map(flag => (
+          {gamingFlags.length === 0 && (
+            <div style={{ padding: 24, textAlign: 'center', color: 'var(--text4)', fontSize: 11 }}>No behavioral flags detected this cycle.</div>
+          )}
+          {gamingFlags.map(flag => (
             <div key={flag.id} style={{ padding: 12, borderBottom: '1px solid var(--border)' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
                 <SevBadge sev={flag.sev} />
@@ -88,13 +99,18 @@ export default function GamingPage() {
           </div>
           <div className="panel" style={{ padding: 12 }}>
             <div className="sec-title" style={{ marginBottom: 10 }}>INTEGRITY SCORES</div>
-            {([['Voting Integrity', 74, 'var(--accent)'], ['Collusion Index', 28, 'var(--short)'], ['Analyst Trust', 81, 'var(--long)'], ['Behavioral Risk', 32, 'var(--short)']] as [string, number, string][]).map(([l, v, c]) => (
+            {([
+              ['Voting Integrity', votingIntegrity, 'var(--accent)'],
+              ['Collusion Index', collusionIdx, collusionIdx >= 50 ? 'var(--short)' : 'var(--warn)'],
+              ['Analyst Trust', Math.max(0, Math.round(votingIntegrity * 1.09)), 'var(--long)'],
+              ['Behavioral Risk', collusionIdx, collusionIdx >= 50 ? 'var(--short)' : 'var(--warn)'],
+            ] as [string, number, string][]).map(([l, v, c]) => (
               <div key={l} style={{ marginBottom: 8 }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                   <span style={{ fontSize: 10, color: 'var(--text3)' }}>{l}</span>
-                  <span className="mono" style={{ fontSize: 10, color: c, fontWeight: 700 }}>{v}/100</span>
+                  <span className="mono" style={{ fontSize: 10, color: c, fontWeight: 700 }}>{Math.min(100, v)}/100</span>
                 </div>
-                <Bar val={v} color={c} />
+                <Bar val={Math.min(100, v)} color={c} />
               </div>
             ))}
           </div>
