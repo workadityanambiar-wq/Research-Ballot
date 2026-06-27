@@ -84,22 +84,18 @@ export async function POST(req: NextRequest) {
   // Clear failed attempts on success
   await prisma.user.update({ where: { id: user.id }, data: { failedAttempts: 0, lockedUntil: null } });
 
-  // Password never changed → redirect to set-password
+  // Password never changed → sign in, then redirect to set-password
   if (!user.passwordChangedAt) {
-    // Create a short-lived token to maintain identity through the set-password flow
-    const token = generateSecureToken();
-    const tokenHash = hashToken(token);
-    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 min
-    await prisma.mfaToken.create({ data: { userId: user.id, tokenHash, expiresAt } });
-    return NextResponse.json({ mustChangePassword: true, setupToken: token });
+    await signIn('credentials', { userId: user.id, redirect: false });
+    await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_SUCCESS', detail: 'Login success — first-login password change required', ipAddress: ip, device: userAgent, risk: 'MEDIUM' } });
+    return NextResponse.json({ mustChangePassword: true });
   }
 
-  // Password expired
+  // Password expired → sign in, then redirect to change-password
   if (user.passwordExpiresAt && user.passwordExpiresAt < new Date()) {
-    const token = generateSecureToken();
-    const tokenHash = hashToken(token);
-    await prisma.mfaToken.create({ data: { userId: user.id, tokenHash, expiresAt: new Date(Date.now() + 10 * 60 * 1000) } });
-    return NextResponse.json({ passwordExpired: true, setupToken: token });
+    await signIn('credentials', { userId: user.id, redirect: false });
+    await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_SUCCESS', detail: 'Login success — password expired', ipAddress: ip, device: userAgent, risk: 'MEDIUM' } });
+    return NextResponse.json({ passwordExpired: true });
   }
 
   // MFA required?

@@ -1,9 +1,10 @@
 import 'dotenv/config';
 import { PrismaClient } from '../lib/generated/prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { PrismaNeon } from '@prisma/adapter-neon';
 import { hash } from '@node-rs/argon2';
+import { IDEAS0, ALLOCATIONS0 } from '../lib/data';
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL ?? '' });
+const adapter = new PrismaNeon({ connectionString: process.env.DATABASE_URL ?? '' });
 const prisma = new PrismaClient({ adapter });
 
 const TEMP_PASSWORD = 'Apex@2025';
@@ -68,6 +69,75 @@ async function main() {
     });
     console.log(`  ✓ ${u.displayName} (${u.role})`);
   }
+
+  // Seed ideas
+  console.log('Seeding 10 ideas...');
+  for (const idea of IDEAS0) {
+    await prisma.idea.upsert({
+      where: { id: idea.id },
+      update: {},
+      create: {
+        id: idea.id,
+        ticker: idea.ticker,
+        assetClass: idea.assetClass,
+        dir: idea.dir as 'LONG' | 'SHORT',
+        entry: idea.entry,
+        stop: idea.stop,
+        target: idea.target,
+        hold: idea.hold,
+        posSize: idea.posSize,
+        conv: idea.conv,
+        expRet: idea.expRet,
+        expDD: idea.expDD,
+        rr: idea.rr,
+        thesis: idea.thesis,
+        catalysts: idea.catalysts,
+        risks: idea.risks,
+        authorId: idea.authorId,
+        submittedAt: new Date(idea.submittedAt),
+        weekId: idea.weekId,
+        status: idea.status,
+        approvalStatus: idea.approvalStatus as 'APPROVED' | 'PENDING' | 'REVIEW' | 'REJECTED',
+        imageUrl: idea.imageUrl ?? null,
+        totalCredits: idea.totalCredits,
+        rank: idea.rank,
+        pmScore: idea.pmScore,
+        skillScore: idea.skillScore,
+        rrScore: idea.rrScore,
+        quantScore: idea.quantScore,
+        finalScore: idea.finalScore,
+        momentumScore: idea.momentumScore,
+        rsScore: idea.rsScore,
+        earningRevScore: idea.earningRevScore,
+      },
+    });
+    console.log(`  ✓ ${idea.id} (${idea.ticker})`);
+  }
+
+  // Seed allocations
+  console.log('Seeding 59 allocations...');
+  for (const alloc of ALLOCATIONS0) {
+    await prisma.allocation.upsert({
+      where: {
+        userId_ideaId_round_weekId: {
+          userId: alloc.userId,
+          ideaId: alloc.ideaId,
+          round: alloc.round,
+          weekId: alloc.weekId,
+        },
+      },
+      update: {},
+      create: {
+        userId: alloc.userId,
+        ideaId: alloc.ideaId,
+        amount: alloc.amount,
+        round: alloc.round,
+        weekId: alloc.weekId,
+        submittedAt: new Date(alloc.submittedAt),
+      },
+    });
+  }
+  console.log('  ✓ 59 allocations seeded');
 
   console.log('Seed complete.');
 }

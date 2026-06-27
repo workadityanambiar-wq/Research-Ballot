@@ -1,11 +1,10 @@
 'use client';
-import { createContext, useContext, useState, ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { useSession, signOut } from 'next-auth/react';
 import type { Idea, PortfolioPosition, VoteMap, Allocation } from '@/lib/types';
-import { IDEAS0, PORT0, VOTES0, ALLOCATIONS0 } from '@/lib/data';
+import { PORT0, VOTES0, WEEK_ID } from '@/lib/data';
 import { useRouter } from 'next/navigation';
 
-// The auth user shape from Auth.js session
 export interface AuthUser {
   id: string;
   email: string;
@@ -25,10 +24,10 @@ interface AppState {
   portfolio: PortfolioPosition[];
   votes: VoteMap;
   allocations: Allocation[];
-  setIdeas: (fn: (prev: Idea[]) => Idea[]) => void;
   setPortfolio: (fn: (prev: PortfolioPosition[]) => PortfolioPosition[]) => void;
   setVotes: (v: VoteMap) => void;
-  submitRound: (newAllocs: Allocation[]) => void;
+  submitRound: (entries: Array<{ ideaId: string; amount: number }>, round: 1 | 2) => Promise<void>;
+  refreshIdeas: () => Promise<void>;
   logout: () => void;
 }
 
@@ -36,15 +35,46 @@ const AppContext = createContext<AppState | null>(null);
 
 export function AppProvider({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
-  const [ideas, setIdeas] = useState<Idea[]>(IDEAS0);
+  const [ideas, setIdeasState] = useState<Idea[]>([]);
   const [portfolio, setPortfolio] = useState<PortfolioPosition[]>(PORT0);
   const [votes, setVotes] = useState<VoteMap>(VOTES0);
-  const [allocations, setAllocations] = useState<Allocation[]>(ALLOCATIONS0);
+  const [allocations, setAllocationsState] = useState<Allocation[]>([]);
   const router = useRouter();
 
-  const submitRound = (newAllocs: Allocation[]) => {
-    setAllocations(prev => [...prev, ...newAllocs]);
-  };
+  const refreshIdeas = useCallback(async () => {
+    try {
+      const data = await fetch(`/api/ideas?weekId=${WEEK_ID}`).then(r => r.ok ? r.json() : []);
+      setIdeasState(data);
+    } catch { /* DB not reachable */ }
+  }, []);
+
+  const refreshAllocations = useCallback(async () => {
+    try {
+      const data = await fetch(`/api/allocations?weekId=${WEEK_ID}`).then(r => r.ok ? r.json() : []);
+      setAllocationsState(data);
+    } catch { /* DB not reachable */ }
+  }, []);
+
+  // Load on mount (once session is ready)
+  useEffect(() => {
+    if (status === 'authenticated') {
+      refreshIdeas();
+      refreshAllocations();
+    }
+  }, [status, refreshIdeas, refreshAllocations]);
+
+  const submitRound = useCallback(async (entries: Array<{ ideaId: string; amount: number }>, round: 1 | 2) => {
+    const res = await fetch('/api/allocations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ allocations: entries, round, weekId: WEEK_ID }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error((err as { error?: string }).error ?? 'Failed to submit ballot');
+    }
+    await Promise.all([refreshIdeas(), refreshAllocations()]);
+  }, [refreshIdeas, refreshAllocations]);
 
   const user: AuthUser | null = session?.user
     ? {
@@ -66,7 +96,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AppContext.Provider value={{ user, sessionLoading: status === 'loading', ideas, portfolio, votes, allocations, setIdeas, setPortfolio, setVotes, submitRound, logout }}>
+    <AppContext.Provider value={{ user, sessionLoading: status === 'loading', ideas, portfolio, votes, allocations, setPortfolio, setVotes, submitRound, refreshIdeas, logout }}>
       {children}
     </AppContext.Provider>
   );

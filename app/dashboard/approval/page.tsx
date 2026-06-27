@@ -4,17 +4,34 @@ import { useApp } from '@/context/AppContext';
 import { DirBadge, StatusBadge } from '@/components/ui/Badge';
 
 export default function ApprovalPage() {
-  const { user, ideas, setIdeas } = useApp();
+  const { user, ideas, refreshIdeas } = useApp();
   const [modal, setModal] = useState<{ id: string; ticker: string; action: 'approve' | 'reject' } | null>(null);
   const [pin, setPin] = useState('');
+  const [confirming, setConfirming] = useState(false);
   if (!user) return null;
 
   const pending = ideas.filter(i => i.approvalStatus === 'PENDING' || i.approvalStatus === 'REVIEW');
 
-  const confirm = () => {
+  const confirm = async () => {
     if (pin.length < 4) { alert('Enter 4-digit PIN.'); return; }
-    setIdeas(prev => prev.map(i => i.id === modal!.id ? { ...i, approvalStatus: modal!.action === 'approve' ? 'APPROVED' : 'REJECTED' } : i));
-    setModal(null); setPin('');
+    setConfirming(true);
+    try {
+      const res = await fetch(`/api/ideas/${modal!.id}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: modal!.action }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error ?? 'Action failed.');
+        return;
+      }
+      await refreshIdeas();
+      setModal(null);
+      setPin('');
+    } finally {
+      setConfirming(false);
+    }
   };
 
   return (
@@ -27,8 +44,8 @@ export default function ApprovalPage() {
             <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 16 }}>Confirm <strong>{modal.action.toUpperCase()}</strong> for {modal.ticker}</div>
             <input className="inp mono" type="password" placeholder="4-digit PIN" maxLength={4} value={pin} onChange={e => setPin(e.target.value)} style={{ textAlign: 'center', fontSize: 22, letterSpacing: 10, marginBottom: 14 }} />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-              <button className="btn btn-ghost btn-sm" onClick={() => { setModal(null); setPin(''); }}>CANCEL</button>
-              <button className={`btn btn-sm ${modal.action === 'approve' ? 'btn-success' : 'btn-danger'}`} onClick={confirm}>CONFIRM {modal.action.toUpperCase()}</button>
+              <button className="btn btn-ghost btn-sm" onClick={() => { setModal(null); setPin(''); }} disabled={confirming}>CANCEL</button>
+              <button className={`btn btn-sm ${modal.action === 'approve' ? 'btn-success' : 'btn-danger'}`} onClick={confirm} disabled={confirming}>{confirming ? 'CONFIRMING…' : `CONFIRM ${modal.action.toUpperCase()}`}</button>
             </div>
           </div>
         </div>

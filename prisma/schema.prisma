@@ -174,10 +174,86 @@ enum AuditAction {
   TRADE_APPROVED
   BALLOT_SUBMITTED
   PERMISSION_CHANGE
+  VOTE_CAST
+  ALLOCATION_ADJUSTED
+  LOGIN_ANOMALY
+  SESSION_STARTED
 }
 
 enum RiskLevel {
   LOW
   MEDIUM
   HIGH
+}
+
+// ──────────────────────────────────────────────
+// Business models
+// ──────────────────────────────────────────────
+
+model Idea {
+  id              String         @id
+  ticker          String
+  assetClass      String         @default("US Equities")
+  dir             Direction
+  entry           Float
+  stop            Float
+  target          Float
+  hold            String         @default("1-3M")
+  posSize         Float          @default(1)
+  conv            Int            @default(7)
+  expRet          Float          @default(0)
+  expDD           Float          @default(0)
+  rr              Float          @default(0)
+  thesis          String         @db.Text
+  catalysts       String[]
+  risks           String[]
+  authorId        String
+  submittedAt     DateTime       @default(now())
+  weekId          String
+  status          String         @default("ACTIVE")
+  approvalStatus  ApprovalStatus @default(PENDING)
+  imageUrl        String?        @db.Text
+  totalCredits    Int            @default(0)
+  rank            Int            @default(0)
+  pmScore         Float          @default(0)
+  skillScore      Float          @default(0)
+  rrScore         Float          @default(0)
+  quantScore      Float          @default(0)
+  finalScore      Float          @default(0)
+  momentumScore   Float          @default(0)
+  rsScore         Float          @default(0)
+  earningRevScore Float          @default(0)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  allocations     Allocation[]
+
+  @@index([weekId])
+  @@index([authorId])
+}
+
+model Allocation {
+  id          String   @id @default(cuid())
+  userId      String
+  ideaId      String
+  amount      Int
+  round       Int      @default(1)
+  weekId      String
+  submittedAt DateTime @default(now())
+  idea        Idea     @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, ideaId, round, weekId])
+  @@index([weekId])
+  @@index([userId, weekId])
+}
+
+enum Direction {
+  LONG
+  SHORT
+}
+
+enum ApprovalStatus {
+  APPROVED
+  PENDING
+  REVIEW
+  REJECTED
 }

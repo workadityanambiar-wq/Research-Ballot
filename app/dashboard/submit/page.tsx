@@ -5,7 +5,7 @@ import { DirBadge } from '@/components/ui/Badge';
 import { WEEK_ID, IDEA_LIMIT_PER_WEEK } from '@/lib/data';
 
 export default function SubmitPage() {
-  const { user, ideas, setIdeas } = useApp();
+  const { user, ideas, refreshIdeas } = useApp();
   if (!user) return null;
 
   const wkCount = ideas.filter(i => i.authorId === user.legacyId && i.weekId === WEEK_ID).length;
@@ -14,6 +14,7 @@ export default function SubmitPage() {
   const [imgDrag, setImgDrag] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const [done, setDone] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const s = (k: string, v: string | number) => setF(p => ({ ...p, [k]: v }));
 
   const loadImage = (file: File) => {
@@ -27,22 +28,34 @@ export default function SubmitPage() {
     ? ((parseFloat(f.target) - parseFloat(f.entry)) / (parseFloat(f.entry) - parseFloat(f.stop))).toFixed(2)
     : '-';
 
-  const submit = () => {
+  const submit = async () => {
     if (!f.ticker || !f.entry || !f.stop || !f.target || !f.thesis) { alert('Please complete all required fields.'); return; }
     if (wkCount >= IDEA_LIMIT_PER_WEEK) { alert('Weekly limit reached.'); return; }
-    setIdeas(prev => [...prev, {
-      id: `IDEA-0${String(prev.length + 1).padStart(2, '0')}`,
-      ticker: f.ticker.toUpperCase(), assetClass: f.assetClass, dir: f.dir as 'LONG' | 'SHORT',
-      entry: parseFloat(f.entry), stop: parseFloat(f.stop), target: parseFloat(f.target), hold: f.hold,
-      posSize: parseFloat(f.posSize) || 1, conv: f.conv, expRet: parseFloat(f.expRet) || 0,
-      expDD: parseFloat(f.expDD) || 0, rr: parseFloat(rr) || 0,
-      thesis: f.thesis, catalysts: f.catalysts.split('\n').filter(Boolean), risks: f.risks.split('\n').filter(Boolean),
-      authorId: user.legacyId, submittedAt: new Date().toISOString(), weekId: WEEK_ID, status: 'ACTIVE', totalCredits: 0,
-      rank: prev.length + 1, pmScore: 0, skillScore: 0, rrScore: 0, quantScore: 0, finalScore: 0,
-      momentumScore: 0, rsScore: 0, earningRevScore: 0, approvalStatus: 'PENDING',
-      ...(imageUrl ? { imageUrl } : {}),
-    }]);
-    setDone(true);
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticker: f.ticker, assetClass: f.assetClass, dir: f.dir,
+          entry: f.entry, stop: f.stop, target: f.target, hold: f.hold,
+          posSize: f.posSize, conv: f.conv, expRet: f.expRet, expDD: f.expDD,
+          thesis: f.thesis,
+          catalysts: f.catalysts.split('\n').filter(Boolean),
+          risks: f.risks.split('\n').filter(Boolean),
+          ...(imageUrl ? { imageUrl } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        alert(err.error ?? 'Submission failed.');
+        return;
+      }
+      await refreshIdeas();
+      setDone(true);
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (done) return (
@@ -184,7 +197,7 @@ export default function SubmitPage() {
               </div>
             </div>
           </div>
-          <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: 12, fontSize: 12 }} onClick={submit}>✦  SUBMIT IDEA  →</button>
+          <button className="btn btn-primary" style={{ width: '100%', justifyContent: 'center', padding: 12, fontSize: 12 }} onClick={submit} disabled={submitting}>{submitting ? 'SUBMITTING…' : '✦  SUBMIT IDEA  →'}</button>
           <div style={{ marginTop: 8, fontSize: 9, color: 'var(--text4)', textAlign: 'center' }}>Identity anonymized · No edits · Audit logged</div>
         </div>
       </div>

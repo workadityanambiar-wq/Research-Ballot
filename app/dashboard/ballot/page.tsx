@@ -179,6 +179,7 @@ export default function BallotPage() {
   const [phase, setPhase] = useState<Phase>(getPhase);
   const [inputVals, setInputVals] = useState<Record<string, string>>({});
   const [now, setNow] = useState(Date.now);
+  const [locking, setLocking] = useState(false);
 
   useEffect(() => {
     const id = setInterval(() => { setNow(Date.now()); setPhase(getPhase()); }, 1000);
@@ -216,20 +217,20 @@ export default function BallotPage() {
   const teamTotal = (idea: Idea) =>
     (r1Totals[idea.id] ?? 0) + (phase === 'round2' || phase === 'results' ? (r2Totals[idea.id] ?? 0) : 0);
 
-  const lockBallot = () => {
+  const lockBallot = async () => {
     const entries = Object.entries(inputVals).filter(([, v]) => (parseInt(v || '0', 10) || 0) > 0);
-    if (entries.length === 0 || remaining < 0) return;
-    const ts = new Date().toISOString();
-    const newAllocs: Allocation[] = entries.map(([ideaId, v], i) => ({
-      id: `AL-U${Date.now()}-${i}`,
-      userId: legacyId,
-      ideaId,
-      amount: parseInt(v, 10),
-      round: currentRound,
-      submittedAt: ts,
-      weekId: WEEK_ID,
-    }));
-    submitRound(newAllocs);
+    if (entries.length === 0 || remaining < 0 || locking) return;
+    setLocking(true);
+    try {
+      await submitRound(
+        entries.map(([ideaId, v]) => ({ ideaId, amount: parseInt(v, 10) })),
+        currentRound,
+      );
+    } catch (e) {
+      alert((e as Error).message ?? 'Submission failed.');
+    } finally {
+      setLocking(false);
+    }
   };
 
   const sidebarItems: { ideaId: string; amount: number }[] = hasSubmitted
@@ -397,11 +398,11 @@ export default function BallotPage() {
               )}
               <button
                 className="btn btn-primary"
-                style={{ width: '100%', justifyContent: 'center', padding: 10, opacity: stagedTotal === 0 || remaining < 0 ? 0.4 : 1 }}
-                disabled={stagedTotal === 0 || remaining < 0}
+                style={{ width: '100%', justifyContent: 'center', padding: 10, opacity: stagedTotal === 0 || remaining < 0 || locking ? 0.4 : 1 }}
+                disabled={stagedTotal === 0 || remaining < 0 || locking}
                 onClick={lockBallot}
               >
-                LOCK ROUND {currentRound} BALLOT →
+                {locking ? 'LOCKING…' : `LOCK ROUND ${currentRound} BALLOT →`}
               </button>
               <div style={{ fontSize: 9, color: 'var(--text4)', textAlign: 'center', marginTop: 6 }}>
                 Immutable after submission · Partial allocation OK

@@ -21,14 +21,14 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorised.' }, { status: 401 });
   }
 
-  let body: { currentPassword?: string; newPassword?: string; setupToken?: string };
+  let body: { currentPassword?: string; newPassword?: string };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid request.' }, { status: 400 });
   }
 
-  const { currentPassword, newPassword, setupToken } = body;
+  const { currentPassword, newPassword } = body;
 
   if (!newPassword) {
     return NextResponse.json({ error: 'New password is required.' }, { status: 400 });
@@ -37,19 +37,8 @@ export async function POST(req: NextRequest) {
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!user) return NextResponse.json({ error: 'User not found.' }, { status: 404 });
 
-  // For first-login/expired flow, verify via setupToken instead of current password
-  if (!user.passwordChangedAt || setupToken) {
-    if (setupToken) {
-      const { hashToken } = await import('@/lib/auth-helpers');
-      const tokenHash = hashToken(setupToken);
-      const record = await prisma.mfaToken.findUnique({ where: { tokenHash } });
-      if (!record || record.userId !== user.id || record.expiresAt < new Date()) {
-        return NextResponse.json({ error: 'Invalid or expired setup token.' }, { status: 401 });
-      }
-      await prisma.mfaToken.delete({ where: { tokenHash } });
-    }
-  } else {
-    // Normal change: verify current password
+  // First-login flow: passwordChangedAt is null → no current password needed
+  if (user.passwordChangedAt) {
     if (!currentPassword) {
       return NextResponse.json({ error: 'Current password is required.' }, { status: 400 });
     }
