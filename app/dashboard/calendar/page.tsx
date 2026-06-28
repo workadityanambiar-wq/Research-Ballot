@@ -151,9 +151,9 @@ export default function CalendarPage() {
           <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Research Calendar</h1>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
             Earnings, macro events, company catalysts
-            {ecoSource === 'investing.com' && (
+            {ecoSource === 'finnhub' && (
               <span style={{ marginLeft: 8, color: 'var(--purple)', fontWeight: 600 }}>
-                · Economic data via Investing.com
+                · Economic data via Finnhub
               </span>
             )}
             {ecoSource === 'cache' && (
@@ -250,7 +250,7 @@ export default function CalendarPage() {
                 </span>
                 {showEco && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, color: 'var(--text4)' }}>
-                    <span style={{ fontSize: 8, color: 'var(--purple)' }}>★</span>Eco (Investing.com)
+                    <span style={{ fontSize: 8, color: 'var(--purple)' }}>★</span>Eco (Finnhub)
                   </span>
                 )}
               </div>
@@ -263,12 +263,8 @@ export default function CalendarPage() {
             <div style={{ padding: '8px 16px', background: 'rgba(168,85,247,.06)', borderBottom: '1px solid rgba(168,85,247,.15)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <span style={{ fontSize: 9, color: 'var(--purple)' }}>★</span>
               <span style={{ fontSize: 10, color: 'var(--text3)', flex: 1 }}>
-                Economic data unavailable — server request blocked. Economic events are fetched live in your browser below.
+                Economic data unavailable — set FINNHUB_API_KEY in environment variables.
               </span>
-              <a href="https://www.investing.com/economic-calendar/" target="_blank" rel="noopener noreferrer"
-                style={{ fontSize: 9, color: 'var(--purple)', textDecoration: 'none', fontWeight: 700, fontFamily: 'var(--mono)', letterSpacing: '.04em', flexShrink: 0 }}>
-                VIEW LIVE →
-              </a>
             </div>
           )}
 
@@ -378,7 +374,7 @@ export default function CalendarPage() {
                     <>
                       {selectedRes.length > 0 && (
                         <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--purple)', letterSpacing: '.08em', padding: '8px 0 4px', textTransform: 'uppercase' }}>
-                          Economic Events · Investing.com
+                          Economic Events · Finnhub
                         </div>
                       )}
                       {selectedEco.map(e => (
@@ -488,23 +484,6 @@ export default function CalendarPage() {
             })}
           </div>
 
-          {/* Eco live widget fallback */}
-          {showEco && !ecoLoading && ecoSource === 'error' && (
-            <div className="panel" style={{ padding: 14, overflow: 'hidden' }}>
-              <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--purple)', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 6 }}>Economic Calendar · Live</div>
-              <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 8 }}>Powered by Investing.com</div>
-              <iframe
-                src="https://sslecal2.investing.com?columns=exc_currency,exc_importance,exc_actual,exc_forecast,exc_previous&features=timezone,timeselector,filters&countries=5&calType=week&timeZone=22&lang=56"
-                width="100%"
-                height="380"
-                frameBorder={0}
-                allowTransparency={true}
-                style={{ borderRadius: 4, minWidth: 0 }}
-                title="Economic Calendar"
-              />
-            </div>
-          )}
-
           {/* Legend */}
           <div className="panel" style={{ padding: 12 }}>
             <div className="sec-title" style={{ marginBottom: 8 }}>Legend</div>
@@ -520,7 +499,7 @@ export default function CalendarPage() {
                   <div key={imp} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
                     <span style={{ fontSize: 9, color: IMP_COLOR[imp], width: 22 }}>{IMP_STARS[imp]}</span>
                     <span style={{ fontSize: 10, color: 'var(--text3)' }}>
-                      {imp === 1 ? 'Low' : imp === 2 ? 'Medium' : 'High'} Impact (Investing.com)
+                      {imp === 1 ? 'Low' : imp === 2 ? 'Medium' : 'High'} Impact (Finnhub)
                     </span>
                   </div>
                 ))}

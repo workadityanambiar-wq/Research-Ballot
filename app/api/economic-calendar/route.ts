@@ -7,103 +7,56 @@ export interface EcoEvent {
   id: string;
   title: string;
   date: string;        // ISO UTC
-  currency: string;
+  currency: string;    // country code e.g. "US"
   importance: 1 | 2 | 3;
   actual: string | null;
   forecast: string | null;
   previous: string | null;
 }
 
-// Module-level cache (per server process, survives across requests)
 const _cache = new Map<string, { events: EcoEvent[]; at: number }>();
 const TTL = 4 * 3600 * 1000; // 4 h
 
-function parseHtml(html: string): EcoEvent[] {
-  const events: EcoEvent[] = [];
-
-  // Each row: data-event-datetime="2026-06-30 12:30:00" event_attr_id="00000"
-  const rowRe = /data-event-datetime="([^"]+)"[^>]*event_attr_id="(\d+)"[^>]*>([\s\S]*?)(?=<tr\s|<\/tbody>|$)/g;
-  let m: RegExpExecArray | null;
-
-  while ((m = rowRe.exec(html)) !== null) {
-    const [, dt, eventId, row] = m;
-
-    // Currency: text node after the flag span
-    const curr = row.match(/ceFlags[^"]*"[^/]*/)?.[0]?.match(/[A-Z]{3}\s*<\/td>/)
-      ? row.match(/([A-Z]{3})\s*<\/td>/)?.[1]
-      : row.match(/>\s*([A-Z]{3})\s*\n?\s*<\/td>/)?.[1] ?? 'USD';
-
-    // Event name: inside the .event td
-    const title = row
-      .match(/class="[^"]*\bevent\b[^"]*"[^>]*>[\s\S]*?<a[^>]*>([^<]+)<\/a>/)?.[1]
-      ?.trim();
-    if (!title) continue;
-
-    // Importance: count full-bull icons (1–3)
-    const bulls = (row.match(/FullBullishIcon/g) ?? []).length;
-    const importance = (Math.min(3, Math.max(1, bulls || 1))) as 1 | 2 | 3;
-
-    // Values from bold <td>s (actual, forecast, previous)
-    const vals = [...row.matchAll(/<td[^>]*class="[^"]*\bbold\b[^"]*"[^>]*>([\s\S]*?)<\/td>/g)]
-      .map(x => x[1].replace(/<[^>]+>/g, '').trim() || null);
-
-    // data-event-datetime is UTC on investing.com
-    let date: string;
-    try {
-      date = new Date(dt.replace(' ', 'T') + ':00Z').toISOString();
-    } catch {
-      continue;
-    }
-
-    events.push({
-      id: `eco-${eventId}`,
-      title,
-      date,
-      currency: String(curr ?? 'USD').trim(),
-      importance,
-      actual:   vals[0] ?? null,
-      forecast: vals[1] ?? null,
-      previous: vals[2] ?? null,
-    });
-  }
-
-  return events;
+interface FinnhubEvent {
+  event:    string;
+  country:  string;
+  impact:   string;         // "low" | "medium" | "high"
+  actual:   string | null;
+  estimate: string | null;
+  prev:     string | null;
+  time:     string;         // "YYYY-MM-DD HH:MM:SS" UTC
 }
 
-async function fetchFromInvesting(dateFrom: string, dateTo: string): Promise<EcoEvent[]> {
-  const body = new URLSearchParams();
-  body.append('country[]', '72');     // US
-  body.append('importance[]', '2');   // medium
-  body.append('importance[]', '3');   // high
-  body.append('dateFrom', dateFrom);
-  body.append('dateTo', dateTo);
-  body.append('timeFilter', 'timeRemain');
-  body.append('currentTab', 'custom');
-  body.append('limit_from', '0');
+function toImportance(impact: string): 1 | 2 | 3 {
+  if (impact === 'high')   return 3;
+  if (impact === 'medium') return 2;
+  return 1;
+}
 
-  const res = await fetch(
-    'https://economic-calendar.investing.com/economic-calendar/Service/getCalendarFilteredData',
-    {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
-        'Referer': 'https://www.investing.com/economic-calendar/',
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json, text/javascript, */*; q=0.01',
-        'Accept-Language': 'en-US,en;q=0.9',
-      },
-      body: body.toString(),
-      signal: AbortSignal.timeout(12000),
-    },
-  );
+async function fetchFromFinnhub(dateFrom: string, dateTo: string): Promise<EcoEvent[]> {
+  const apiKey = process.env.FINNHUB_API_KEY;
+  if (!apiKey) throw new Error('FINNHUB_API_KEY not configured');
 
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const url = `https://finnhub.io/api/v1/calendar/economic?from=${dateFrom}&to=${dateTo}&token=${apiKey}`;
+  const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
 
-  const json = await res.json() as { data?: string };
-  if (!json.data) throw new Error('Empty data field');
+  if (!res.ok) throw new Error(`Finnhub ${res.status} ${res.statusText}`);
 
-  return parseHtml(json.data);
+  const json = await res.json() as { economicCalendar?: FinnhubEvent[] };
+  const items = json.economicCalendar ?? [];
+
+  return items
+    .filter(e => e.event && e.time)
+    .map(e => ({
+      id:         `eco-${e.country}-${e.time}-${e.event}`.replace(/\s+/g, '-'),
+      title:      e.event,
+      date:       new Date(e.time.replace(' ', 'T') + 'Z').toISOString(),
+      currency:   e.country ?? 'US',
+      importance: toImportance(e.impact),
+      actual:     e.actual   ?? null,
+      forecast:   e.estimate ?? null,
+      previous:   e.prev     ?? null,
+    }));
 }
 
 export async function GET(req: NextRequest) {
@@ -115,23 +68,18 @@ export async function GET(req: NextRequest) {
 
   const dateFrom = fromStr.slice(0, 10);
   const dateTo   = toStr.slice(0, 10);
-  const key      = `${dateFrom}_${dateTo}`;
+  const cacheKey = `${dateFrom}_${dateTo}`;
 
-  const hit = _cache.get(key);
+  const hit = _cache.get(cacheKey);
   if (hit && Date.now() - hit.at < TTL) {
-    return NextResponse.json({
-      events:     hit.events,
-      source:     'cache',
-      fetchedAt:  new Date(hit.at).toISOString(),
-    });
+    return NextResponse.json({ events: hit.events, source: 'cache', fetchedAt: new Date(hit.at).toISOString() });
   }
 
   try {
-    const events = await fetchFromInvesting(dateFrom, dateTo);
-    _cache.set(key, { events, at: Date.now() });
-    return NextResponse.json({ events, source: 'investing.com', fetchedAt: new Date().toISOString() });
+    const events = await fetchFromFinnhub(dateFrom, dateTo);
+    _cache.set(cacheKey, { events, at: Date.now() });
+    return NextResponse.json({ events, source: 'finnhub', fetchedAt: new Date().toISOString() });
   } catch (err) {
-    // Return cached stale data if available rather than nothing
     if (hit) {
       return NextResponse.json({ events: hit.events, source: 'stale-cache', fetchedAt: new Date(hit.at).toISOString() });
     }
