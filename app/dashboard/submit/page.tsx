@@ -2,6 +2,7 @@
 import { useState, useRef } from 'react';
 import { useApp } from '@/context/AppContext';
 import { DirBadge } from '@/components/ui/Badge';
+import TickerSearch from '@/components/ui/TickerSearch';
 import { WEEK_ID, IDEA_LIMIT_PER_WEEK } from '@/lib/data';
 
 export default function SubmitPage() {
@@ -98,7 +99,9 @@ export default function SubmitPage() {
           <div className="panel" style={{ padding: 14, marginBottom: 12 }}>
             <div className="sec-title" style={{ marginBottom: 12 }}>TRADE PARAMETERS</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
-              <div><div className="form-label">TICKER *</div><input className="inp mono" placeholder="AAPL" value={f.ticker} onChange={e => s('ticker', e.target.value)} /></div>
+              <div><div className="form-label">TICKER *</div>
+                <TickerSearch value={f.ticker} onSelect={(ticker) => s('ticker', ticker)} placeholder="Search ticker…" />
+              </div>
               <div><div className="form-label">ASSET CLASS</div>
                 <select className="inp" value={f.assetClass} onChange={e => s('assetClass', e.target.value)}>
                   {['US Equities', 'Intl Equities', 'Fixed Income', 'Commodities', 'FX', 'Derivatives'].map(o => <option key={o}>{o}</option>)}
