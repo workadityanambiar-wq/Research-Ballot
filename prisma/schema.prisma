@@ -178,6 +178,13 @@ enum AuditAction {
   ALLOCATION_ADJUSTED
   LOGIN_ANOMALY
   SESSION_STARTED
+  RESEARCH_CREATED
+  RESEARCH_UPDATED
+  COMMENT_POSTED
+  ATTACHMENT_ADDED
+  WATCHLIST_CREATED
+  CALENDAR_EVENT_ADDED
+  POST_MORTEM_CREATED
 }
 
 enum RiskLevel {
@@ -193,6 +200,213 @@ model RateLimitEntry {
   createdAt DateTime @default(now())
 
   @@index([key, type, createdAt])
+}
+
+// ──────────────────────────────────────────────
+// Phase 3 — Research OS models
+// ──────────────────────────────────────────────
+
+model ResearchDoc {
+  id              String         @id @default(cuid())
+  ideaId          String         @unique
+  idea            Idea           @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  status          ResearchStatus @default(DRAFT)
+  templateType    String?
+  // Rich text sections (plain text / markdown stored)
+  thesis          String?        @db.Text
+  financials      String?        @db.Text
+  valuation       String?        @db.Text
+  technical       String?        @db.Text
+  overview        String?        @db.Text
+  // Computed scores (updated on save)
+  completionScore Int            @default(0)
+  qualityScore    Int            @default(0)
+  authorId        String
+  lastEditedBy    String?
+  lastEditedAt    DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  versions    ResearchVersion[]
+  catalysts   ResearchCatalyst[]
+  risks       ResearchRisk[]
+  attachments ResearchAttachment[]
+  references  ResearchReference[]
+  comments    ResearchComment[]
+
+  @@index([authorId])
+  @@index([status])
+}
+
+model ResearchVersion {
+  id        String      @id @default(cuid())
+  docId     String
+  doc       ResearchDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  field     String
+  content   String      @db.Text
+  authorId  String
+  createdAt DateTime    @default(now())
+
+  @@index([docId, field])
+}
+
+model ResearchCatalyst {
+  id             String      @id @default(cuid())
+  docId          String
+  doc            ResearchDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  title          String
+  description    String      @db.Text
+  expectedImpact String?
+  probability    Int?
+  timeline       String?
+  importance     String      @default("MEDIUM")
+  sortOrder      Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([docId])
+}
+
+model ResearchRisk {
+  id             String      @id @default(cuid())
+  docId          String
+  doc            ResearchDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  description    String      @db.Text
+  severity       String      @default("MEDIUM")
+  probability    Int?
+  mitigation     String?     @db.Text
+  sortOrder      Int         @default(0)
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([docId])
+}
+
+model ResearchAttachment {
+  id          String      @id @default(cuid())
+  docId       String
+  doc         ResearchDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  fileType    String
+  fileUrl     String      @db.Text
+  fileSize    Int?
+  uploadedBy  String
+  createdAt   DateTime    @default(now())
+  deletedAt   DateTime?
+
+  @@index([docId])
+}
+
+model ResearchReference {
+  id          String      @id @default(cuid())
+  docId       String
+  doc         ResearchDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  title       String
+  source      String
+  url         String?     @db.Text
+  publishDate DateTime?
+  notes       String?     @db.Text
+  addedBy     String
+  createdAt   DateTime    @default(now())
+
+  @@index([docId])
+}
+
+model ResearchComment {
+  id        String          @id @default(cuid())
+  docId     String
+  doc       ResearchDoc     @relation(fields: [docId], references: [id], onDelete: Cascade)
+  parentId  String?
+  parent    ResearchComment? @relation("CommentReplies", fields: [parentId], references: [id])
+  replies   ResearchComment[] @relation("CommentReplies")
+  authorId  String
+  content   String          @db.Text
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  deletedAt DateTime?
+
+  @@index([docId])
+  @@index([parentId])
+}
+
+model Watchlist {
+  id          String          @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  isPublic    Boolean         @default(false)
+  color       String?
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  items WatchlistItem[]
+
+  @@index([ownerId])
+}
+
+model WatchlistItem {
+  id          String    @id @default(cuid())
+  watchlistId String
+  watchlist   Watchlist @relation(fields: [watchlistId], references: [id], onDelete: Cascade)
+  ticker      String
+  notes       String?
+  addedBy     String
+  addedAt     DateTime  @default(now())
+
+  @@unique([watchlistId, ticker])
+  @@index([watchlistId])
+}
+
+model CalendarEvent {
+  id          String   @id @default(cuid())
+  title       String
+  eventType   String
+  date        DateTime
+  ticker      String?
+  ideaId      String?
+  description String?  @db.Text
+  importance  String   @default("MEDIUM")
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  @@index([date])
+  @@index([ticker])
+}
+
+model PostMortem {
+  id             String    @id @default(cuid())
+  ideaId         String    @unique
+  idea           Idea      @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  authorId       String
+  entryDate      DateTime?
+  exitDate       DateTime?
+  entryPrice     Float?
+  exitPrice      Float?
+  actualReturn   Float?
+  maxDrawdown    Float?
+  holdDays       Int?
+  originalThesis String?   @db.Text
+  whatWorked     String?   @db.Text
+  whatFailed     String?   @db.Text
+  mistakes       String?   @db.Text
+  lessonsLearned String?   @db.Text
+  futureAction   String?   @db.Text
+  committeeNotes String?   @db.Text
+  rating         Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([authorId])
+}
+
+enum ResearchStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETE
+  RISK_REVIEW
+  COMMITTEE_REVIEW
+  ARCHIVED
 }
 
 // ──────────────────────────────────────────────
@@ -235,6 +449,8 @@ model Idea {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
   allocations     Allocation[]
+  researchDoc     ResearchDoc?
+  postMortem      PostMortem?
 
   @@index([weekId])
   @@index([authorId])

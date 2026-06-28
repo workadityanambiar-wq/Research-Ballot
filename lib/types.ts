@@ -112,6 +112,142 @@ export interface TickerItem {
 
 export type Phase = 'round1' | 'round1_closed' | 'round2' | 'results';
 
+export type ResearchStatus = 'DRAFT' | 'IN_PROGRESS' | 'COMPLETE' | 'RISK_REVIEW' | 'COMMITTEE_REVIEW' | 'ARCHIVED';
+
+export interface ResearchDoc {
+  id: string;
+  ideaId: string;
+  status: ResearchStatus;
+  templateType: string | null;
+  thesis: string | null;
+  financials: string | null;
+  valuation: string | null;
+  technical: string | null;
+  overview: string | null;
+  completionScore: number;
+  qualityScore: number;
+  authorId: string;
+  lastEditedBy: string | null;
+  lastEditedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ResearchCatalyst {
+  id: string;
+  docId: string;
+  title: string;
+  description: string;
+  expectedImpact: string | null;
+  probability: number | null;
+  timeline: string | null;
+  importance: string;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface ResearchRisk {
+  id: string;
+  docId: string;
+  description: string;
+  severity: string;
+  probability: number | null;
+  mitigation: string | null;
+  sortOrder: number;
+  createdAt: string;
+}
+
+export interface ResearchAttachment {
+  id: string;
+  docId: string;
+  title: string;
+  description: string | null;
+  fileType: string;
+  fileUrl: string;
+  fileSize: number | null;
+  uploadedBy: string;
+  createdAt: string;
+}
+
+export interface ResearchReference {
+  id: string;
+  docId: string;
+  title: string;
+  source: string;
+  url: string | null;
+  publishDate: string | null;
+  notes: string | null;
+  addedBy: string;
+  createdAt: string;
+}
+
+export interface ResearchComment {
+  id: string;
+  docId: string;
+  parentId: string | null;
+  authorId: string;
+  authorName?: string;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+  replies?: ResearchComment[];
+}
+
+export interface WatchlistItem {
+  id: string;
+  ticker: string;
+  notes: string | null;
+  addedBy: string;
+  addedAt: string;
+}
+
+export interface Watchlist {
+  id: string;
+  name: string;
+  description: string | null;
+  ownerId: string;
+  isPublic: boolean;
+  color: string | null;
+  createdAt: string;
+  items: WatchlistItem[];
+}
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  eventType: string;
+  date: string;
+  ticker: string | null;
+  ideaId: string | null;
+  description: string | null;
+  importance: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface PostMortem {
+  id: string;
+  ideaId: string;
+  authorId: string;
+  entryDate: string | null;
+  exitDate: string | null;
+  entryPrice: number | null;
+  exitPrice: number | null;
+  actualReturn: number | null;
+  maxDrawdown: number | null;
+  holdDays: number | null;
+  originalThesis: string | null;
+  whatWorked: string | null;
+  whatFailed: string | null;
+  mistakes: string | null;
+  lessonsLearned: string | null;
+  futureAction: string | null;
+  committeeNotes: string | null;
+  rating: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Allocation {
   id: string;
   userId: string;

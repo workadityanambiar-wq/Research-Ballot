@@ -90,6 +90,11 @@ export async function POST(req: NextRequest) {
     },
   });
 
+  // Auto-create research workspace for new idea
+  prisma.researchDoc.create({
+    data: { ideaId: nextId, authorId: legacyId, status: 'DRAFT' },
+  }).catch(() => {});
+
   await prisma.auditLog.create({
     data: {
       userId: sessionUser.id,

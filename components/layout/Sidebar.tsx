@@ -12,7 +12,12 @@ type NavEntry = NavItem | NavSection;
 
 const NAV: NavEntry[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '▤', href: '/dashboard' },
-  { section: 'RESEARCH' },
+  { id: 'search', label: 'Search', icon: '⌕', href: '/dashboard/search' },
+  { section: 'RESEARCH OS' },
+  { id: 'research', label: 'Research Pipeline', icon: '⬡', href: '/dashboard/research' },
+  { id: 'calendar', label: 'Calendar', icon: '▦', href: '/dashboard/calendar' },
+  { id: 'watchlists', label: 'Watchlists', icon: '◷', href: '/dashboard/watchlists' },
+  { section: 'VOTING' },
   { id: 'ballot', label: 'Weekly Ballot', icon: '☑', href: '/dashboard/ballot' },
   { id: 'submit', label: 'Submit Idea', icon: '✦', href: '/dashboard/submit' },
   { id: 'market', label: 'Credit Market', icon: '◈', href: '/dashboard/market' },
@@ -96,7 +101,7 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
             return <div key={i} className="nav-section">{item.section}</div>;
           }
           if (item.cioOnly && !isCio) return null;
-          const active = pathname === item.href;
+          const active = pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href + '/'));
           return (
             <Link key={item.id} href={item.href} style={{ textDecoration: 'none' }}>
               <div className={`nav-item ${active ? 'active' : ''}`}>
