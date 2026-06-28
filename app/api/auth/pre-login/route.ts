@@ -84,16 +84,18 @@ export async function POST(req: NextRequest) {
   // Clear failed attempts on success
   await prisma.user.update({ where: { id: user.id }, data: { failedAttempts: 0, lockedUntil: null } });
 
+  const sessionMeta = { ipAddress: ip, userAgent };
+
   // Password never changed → create session, then redirect to set-password
   if (!user.passwordChangedAt) {
-    const { token, expires } = await createDbSession(user.id);
+    const { token, expires } = await createDbSession(user.id, sessionMeta);
     await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_SUCCESS', detail: 'Login success — first-login password change required', ipAddress: ip, device: userAgent, risk: 'MEDIUM' } });
     return attachSessionCookie(NextResponse.json({ mustChangePassword: true }), token, expires);
   }
 
   // Password expired → create session, then redirect to change-password
   if (user.passwordExpiresAt && user.passwordExpiresAt < new Date()) {
-    const { token, expires } = await createDbSession(user.id);
+    const { token, expires } = await createDbSession(user.id, sessionMeta);
     await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_SUCCESS', detail: 'Login success — password expired', ipAddress: ip, device: userAgent, risk: 'MEDIUM' } });
     return attachSessionCookie(NextResponse.json({ passwordExpired: true }), token, expires);
   }
@@ -110,14 +112,14 @@ export async function POST(req: NextRequest) {
 
   // MFA enrollment required for CIO/PM
   if ((user.role === 'CIO' || user.role === 'PM') && !user.mfaEnrolledAt) {
-    const { token, expires } = await createDbSession(user.id);
+    const { token, expires } = await createDbSession(user.id, sessionMeta);
     await sendNewDeviceLoginEmail(user.email!, user.displayName, ip, userAgent, new Date().toUTCString());
     await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_SUCCESS', detail: 'Login success — MFA enrollment required', ipAddress: ip, device: userAgent, risk: 'MEDIUM' } });
     return attachSessionCookie(NextResponse.json({ mustEnrollMfa: true }), token, expires);
   }
 
   // No MFA needed — create session directly
-  const { token, expires } = await createDbSession(user.id);
+  const { token, expires } = await createDbSession(user.id, sessionMeta);
   await sendNewDeviceLoginEmail(user.email!, user.displayName, ip, userAgent, new Date().toUTCString());
   await prisma.auditLog.create({ data: { userId: user.id, action: 'LOGIN_SUCCESS', detail: 'Login success', ipAddress: ip, device: userAgent, risk: 'LOW' } });
   return attachSessionCookie(NextResponse.json({ success: true }), token, expires);

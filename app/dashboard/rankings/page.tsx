@@ -3,10 +3,9 @@ import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import { DirBadge, StatusBadge } from '@/components/ui/Badge';
 import { Bar } from '@/components/ui/Bar';
-import { USERS } from '@/lib/data';
 
 export default function RankingsPage() {
-  const { user, ideas } = useApp();
+  const { user, ideas, users } = useApp();
   const [exp, setExp] = useState<string | null>(null);
   if (!user) return null;
   const showId = user.role === 'CIO';
@@ -61,7 +60,7 @@ export default function RankingsPage() {
                   <td><div style={{ display: 'flex', alignItems: 'center', gap: 6 }}><div style={{ width: 56 }}><Bar val={idea.conv * 10} /></div><span className="mono" style={{ fontSize: 10 }}>{idea.conv}/10</span></div></td>
                   <td style={{ textAlign: 'right' }}><span className="mono" style={{ color: 'var(--long)' }}>+{idea.expRet}%</span></td>
                   <td style={{ textAlign: 'right' }}><span className="mono">{idea.totalCredits.toLocaleString()}</span></td>
-                  {showId && <td><span className="mono" style={{ fontSize: 10, color: 'var(--text3)' }}>{(USERS.find(u => u.id === idea.authorId))?.name ?? '—'}</span></td>}
+                  {showId && <td><span className="mono" style={{ fontSize: 10, color: 'var(--text3)' }}>{(users.find(u => u.id === idea.authorId))?.name ?? '—'}</span></td>}
                   <td><StatusBadge status={idea.approvalStatus} /></td>
                   <td style={{ textAlign: 'center', color: 'var(--text4)', fontSize: 10 }}>{exp === idea.id ? '▲' : '▼'}</td>
                 </tr>

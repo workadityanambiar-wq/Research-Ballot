@@ -1,14 +1,13 @@
 'use client';
 import { useApp } from '@/context/AppContext';
-import { USERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/Badge';
 import { Bar } from '@/components/ui/Bar';
 
 export default function AttributionPage() {
-  const { user } = useApp();
+  const { user, users } = useApp();
   if (!user) return null;
 
-  const analysts = USERS;
+  const analysts = users;
 
   return (
     <div className="scroll-y" style={{ height: '100%', padding: 16 }}>

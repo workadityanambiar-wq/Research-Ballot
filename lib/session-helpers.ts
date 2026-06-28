@@ -9,10 +9,15 @@ const SESSION_COOKIE = process.env.NODE_ENV === 'production'
   ? '__Secure-authjs.session-token'
   : 'authjs.session-token';
 
-export async function createDbSession(userId: string): Promise<{ token: string; expires: Date }> {
+export async function createDbSession(
+  userId: string,
+  meta?: { ipAddress?: string; userAgent?: string },
+): Promise<{ token: string; expires: Date }> {
   const token = randomBytes(32).toString('hex');
   const expires = new Date(Date.now() + SESSION_MAX_AGE_MS);
-  await prisma.session.create({ data: { sessionToken: token, userId, expires } });
+  await prisma.session.create({
+    data: { sessionToken: token, userId, expires, ipAddress: meta?.ipAddress, userAgent: meta?.userAgent },
+  });
   return { token, expires };
 }
 
@@ -37,5 +42,12 @@ export async function getSessionUser(req: NextRequest) {
     include: { user: true },
   });
   if (!record || record.expires < new Date()) return null;
+
+  // Non-blocking lastActiveAt update — only when stale > 1 min
+  const now = new Date();
+  if (now.getTime() - record.lastActiveAt.getTime() > 60_000) {
+    prisma.session.update({ where: { sessionToken: token }, data: { lastActiveAt: now } }).catch(() => {});
+  }
+
   return record.user;
 }

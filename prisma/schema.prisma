@@ -186,6 +186,15 @@ enum RiskLevel {
   HIGH
 }
 
+model RateLimitEntry {
+  id        String   @id @default(cuid())
+  key       String
+  type      String
+  createdAt DateTime @default(now())
+
+  @@index([key, type, createdAt])
+}
+
 // ──────────────────────────────────────────────
 // Business models
 // ──────────────────────────────────────────────

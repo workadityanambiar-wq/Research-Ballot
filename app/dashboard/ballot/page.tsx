@@ -2,8 +2,8 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import { DirBadge } from '@/components/ui/Badge';
-import { USERS, getPhase, ROUND_BUDGET, WEEK_ID } from '@/lib/data';
-import type { Allocation, Phase, Idea } from '@/lib/types';
+import { getPhase, ROUND_BUDGET, WEEK_ID } from '@/lib/data';
+import type { Allocation, Phase, Idea, User } from '@/lib/types';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -122,7 +122,7 @@ function IdeaCard({ idea, isOwn, inputVal, onInput, teamTotal, hasSubmitted, loc
 
 // ── Results table ─────────────────────────────────────────────────────────────
 
-function ResultsTable({ ideas, allocations, round }: { ideas: Idea[]; allocations: Allocation[]; round: 1 | 2 | 'both' }) {
+function ResultsTable({ ideas, allocations, round, users }: { ideas: Idea[]; allocations: Allocation[]; round: 1 | 2 | 'both'; users: User[] }) {
   const totals: Record<string, number> = {};
   const counts: Record<string, Set<string>> = {};
   allocations.filter(a => round === 'both' || a.round === round).forEach(a => {
@@ -147,7 +147,7 @@ function ResultsTable({ ideas, allocations, round }: { ideas: Idea[]; allocation
             const total = totals[idea.id] ?? 0;
             const cnt = counts[idea.id]?.size ?? 0;
             const pct = grand > 0 ? ((total / grand) * 100).toFixed(1) : '0.0';
-            const author = USERS.find(u => u.id === idea.authorId);
+            const author = users.find(u => u.id === idea.authorId);
             return (
               <tr key={idea.id}>
                 <td><span className="mono" style={{ fontWeight: 700, color: i < 3 ? 'var(--accent)' : 'var(--text3)' }}>#{i + 1}</span></td>
@@ -175,7 +175,7 @@ function ResultsTable({ ideas, allocations, round }: { ideas: Idea[]; allocation
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function BallotPage() {
-  const { user, ideas, allocations, submitRound } = useApp();
+  const { user, ideas, allocations, users, submitRound } = useApp();
   const [phase, setPhase] = useState<Phase>(getPhase);
   const [inputVals, setInputVals] = useState<Record<string, string>>({});
   const [now, setNow] = useState(Date.now);
@@ -206,7 +206,7 @@ export default function BallotPage() {
   const totalR2 = Object.values(r2Totals).reduce((s, v) => s + v, 0);
   const participants = phase === 'round2' || phase === 'results' ? r2Users.size : r1Users.size;
   const totalAlloc = phase === 'results' ? totalR1 + totalR2 : phase === 'round2' ? totalR2 : totalR1;
-  const totalMembers = USERS.length;
+  const totalMembers = users.length;
 
   const hasSubmitted = allocations.some(a => a.userId === legacyId && a.round === currentRound);
   const myAllocs = allocations.filter(a => a.userId === legacyId && a.round === currentRound);
@@ -280,11 +280,11 @@ export default function BallotPage() {
           <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 10 }}>
             {phase === 'results' ? 'Final Combined Results — R1 + R2' : 'Round 1 Results'}
           </div>
-          <ResultsTable ideas={ideas} allocations={allocations} round={phase === 'results' ? 'both' : 1} />
+          <ResultsTable ideas={ideas} allocations={allocations} round={phase === 'results' ? 'both' : 1} users={users} />
           {phase === 'results' && totalR2 > 0 && (
             <div style={{ marginTop: 32 }}>
               <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--text3)', letterSpacing: '.05em', textTransform: 'uppercase', marginBottom: 10 }}>Round 2 Detail</div>
-              <ResultsTable ideas={ideas} allocations={allocations} round={2} />
+              <ResultsTable ideas={ideas} allocations={allocations} round={2} users={users} />
             </div>
           )}
         </div>

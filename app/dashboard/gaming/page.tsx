@@ -1,13 +1,12 @@
 'use client';
 import { useApp } from '@/context/AppContext';
-import { USERS } from '@/lib/data';
 import { SevBadge } from '@/components/ui/Badge';
 import { StatCard } from '@/components/ui/StatCard';
 import { Bar } from '@/components/ui/Bar';
 import { NetworkGraph } from '@/components/ui/Charts';
 
 export default function GamingPage() {
-  const { user, gamingFlags, votingIntegrity } = useApp();
+  const { user, users, gamingFlags, votingIntegrity } = useApp();
   if (!user || user.role !== 'CIO') return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <div className="panel" style={{ padding: 32, textAlign: 'center', maxWidth: 340 }}>
@@ -83,7 +82,7 @@ export default function GamingPage() {
               <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 6, lineHeight: 1.5 }}>{flag.detail}</div>
               <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
                 <span style={{ fontSize: 9, color: 'var(--text4)' }}>Users:</span>
-                {flag.users.map(uid => <span key={uid} className="badge badge-dim mono" style={{ fontSize: 9 }}>{(USERS.find(x => x.id === uid) || { name: uid }).name}</span>)}
+                {flag.users.map(uid => <span key={uid} className="badge badge-dim mono" style={{ fontSize: 9 }}>{(users.find(x => x.id === uid) || { name: uid }).name}</span>)}
                 <span style={{ fontSize: 9, color: 'var(--text4)', marginLeft: 'auto' }}>{flag.ts}</span>
               </div>
               <div style={{ marginTop: 6 }}><Bar val={flag.score} color={flag.sev === 'HIGH' ? 'var(--short)' : flag.sev === 'MEDIUM' ? 'var(--warn)' : 'var(--long)'} /></div>

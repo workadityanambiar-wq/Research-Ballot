@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-import type { Idea, PortfolioPosition, VoteMap, Allocation, GamingFlag } from '@/lib/types';
-import { USERS, IDEAS0, PORT0, VOTES0, WEEK_ID } from '@/lib/data';
+import type { User, Idea, PortfolioPosition, VoteMap, Allocation, GamingFlag } from '@/lib/types';
+import { IDEAS0, VOTES0, WEEK_ID } from '@/lib/data';
 import { applyScores } from '@/lib/scoring';
 import { runGamingEngine, integrityScore } from '@/lib/gaming';
 import { useRouter } from 'next/navigation';
@@ -21,6 +21,8 @@ export interface AuthUser {
 interface AppState {
   user: AuthUser | null;
   sessionLoading: boolean;
+  users: User[];
+  dataLoading: boolean;
   ideas: Idea[];
   portfolio: PortfolioPosition[];
   votes: VoteMap;
@@ -31,6 +33,7 @@ interface AppState {
   setVotes: (v: VoteMap) => void;
   submitRound: (entries: Array<{ ideaId: string; amount: number }>, round: 1 | 2) => Promise<void>;
   refreshIdeas: () => Promise<void>;
+  refreshPortfolio: () => Promise<void>;
   logout: () => void;
 }
 
@@ -39,9 +42,11 @@ const AppContext = createContext<AppState | null>(null);
 export function AppProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
+  const [users, setUsers] = useState<User[]>([]);
+  const [dataLoading, setDataLoading] = useState(true);
   const [rawIdeas, setRawIdeas] = useState<Idea[]>([]);
   const [ideas, setIdeas] = useState<Idea[]>([]);
-  const [portfolio, setPortfolio] = useState<PortfolioPosition[]>(PORT0);
+  const [portfolio, setPortfolio] = useState<PortfolioPosition[]>([]);
   const [votes, setVotes] = useState<VoteMap>(VOTES0);
   const [allocations, setAllocationsState] = useState<Allocation[]>([]);
   const [gamingFlags, setGamingFlags] = useState<GamingFlag[]>([]);
@@ -61,6 +66,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
       });
   }, []);
 
+  const refreshUsers = useCallback(async () => {
+    try {
+      const data = await fetch('/api/users').then(r => r.ok ? r.json() : []);
+      if (Array.isArray(data) && data.length > 0) setUsers(data);
+    } catch { /* keep [] */ }
+  }, []);
+
   const refreshIdeas = useCallback(async () => {
     try {
       const data = await fetch(`/api/ideas?weekId=${WEEK_ID}`).then(r => r.ok ? r.json() : []);
@@ -75,14 +87,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
     } catch { /* DB not reachable */ }
   }, []);
 
-  useEffect(() => {
-    if (user) {
-      refreshIdeas();
-      refreshAllocations();
-    }
-  }, [user, refreshIdeas, refreshAllocations]);
+  const refreshPortfolio = useCallback(async () => {
+    try {
+      const data = await fetch(`/api/portfolio?weekId=${WEEK_ID}`).then(r => r.ok ? r.json() : []);
+      if (Array.isArray(data) && data.length > 0) setPortfolio(data);
+    } catch { /* keep current */ }
+  }, []);
 
   useEffect(() => {
+    if (user) {
+      Promise.all([
+        refreshIdeas(),
+        refreshAllocations(),
+        refreshUsers(),
+        refreshPortfolio(),
+      ]).finally(() => setDataLoading(false));
+    } else if (!sessionLoading) {
+      setDataLoading(false);
+    }
+  }, [user, sessionLoading, refreshIdeas, refreshAllocations, refreshUsers, refreshPortfolio]);
+
+  useEffect(() => {
+    if (users.length === 0) return;
     const baseIdeas = rawIdeas.length ? rawIdeas : IDEAS0;
     const liveVotes: VoteMap = allocations.reduce<VoteMap>((vm, a) => {
       if (!vm[a.ideaId]) vm[a.ideaId] = {};
@@ -90,7 +116,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return vm;
     }, {});
     const effectiveVotes = Object.keys(liveVotes).length ? liveVotes : VOTES0;
-    setIdeas(applyScores(baseIdeas, effectiveVotes, USERS));
+    setIdeas(applyScores(baseIdeas, effectiveVotes, users));
     const ideaAuthor: Record<string, string> = {};
     for (const idea of baseIdeas) ideaAuthor[idea.id] = idea.authorId;
     const flags = runGamingEngine(effectiveVotes, ideaAuthor);
@@ -98,7 +124,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const uniqueVoters = new Set<string>();
     for (const v of Object.values(effectiveVotes)) for (const id of Object.keys(v)) uniqueVoters.add(id);
     setVotingIntegrity(integrityScore(flags, uniqueVoters.size));
-  }, [rawIdeas, allocations]);
+  }, [rawIdeas, allocations, users]);
 
   const submitRound = useCallback(async (entries: Array<{ ideaId: string; amount: number }>, round: 1 | 2) => {
     const res = await fetch('/api/allocations', {
@@ -120,7 +146,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [router]);
 
   return (
-    <AppContext.Provider value={{ user, sessionLoading, ideas, portfolio, votes, allocations, gamingFlags, votingIntegrity, setPortfolio, setVotes, submitRound, refreshIdeas, logout }}>
+    <AppContext.Provider value={{
+      user, sessionLoading, users, dataLoading,
+      ideas, portfolio, votes, allocations, gamingFlags, votingIntegrity,
+      setPortfolio, setVotes, submitRound, refreshIdeas, refreshPortfolio, logout,
+    }}>
       {children}
     </AppContext.Provider>
   );

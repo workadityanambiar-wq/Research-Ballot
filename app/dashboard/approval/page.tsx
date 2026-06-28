@@ -19,7 +19,7 @@ export default function ApprovalPage() {
       const res = await fetch(`/api/ideas/${modal!.id}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: modal!.action }),
+        body: JSON.stringify({ action: modal!.action, pin }),
       });
       if (!res.ok) {
         const err = await res.json();

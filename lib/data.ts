@@ -107,7 +107,7 @@ export const TICKERS: TickerItem[] = [
   { sym: 'META', val: '520.80', chg: '+0.73%', up: true },
 ];
 
-export const WEEK_ID = 'W26-2025';
+export const WEEK_ID = process.env.WEEK_ID ?? 'W26-2025';
 export const IDEA_LIMIT_PER_WEEK = 2;
 export const ROUND_BUDGET = 5000;
 

@@ -1,42 +1,42 @@
-import { RateLimiterMemory } from 'rate-limiter-flexible';
-
-// 10 login attempts per IP per 15 minutes
-const loginLimiter = new RateLimiterMemory({
-  keyPrefix: 'login',
-  points: 10,
-  duration: 900,  // 15 min
-  blockDuration: 900,
-});
-
-// 3 password reset requests per email per hour
-const resetLimiter = new RateLimiterMemory({
-  keyPrefix: 'reset',
-  points: 3,
-  duration: 3600,
-  blockDuration: 3600,
-});
+import { prisma } from '@/lib/db';
 
 export interface RateLimitResult {
   allowed: boolean;
   msBeforeNext?: number;
 }
 
-export async function checkLoginRateLimit(ip: string): Promise<RateLimitResult> {
-  try {
-    await loginLimiter.consume(ip);
-    return { allowed: true };
-  } catch (e: unknown) {
-    const err = e as { msBeforeNext?: number };
-    return { allowed: false, msBeforeNext: err.msBeforeNext };
+// Login: 10 attempts per IP per 15 minutes
+const LOGIN_LIMIT = 10;
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+
+// Reset: 3 requests per email per hour
+const RESET_LIMIT = 3;
+const RESET_WINDOW_MS = 60 * 60 * 1000;
+
+async function check(key: string, type: string, limit: number, windowMs: number): Promise<RateLimitResult> {
+  const windowStart = new Date(Date.now() - windowMs);
+
+  // Delete expired entries while we're here (lazy cleanup — bounded by window size)
+  await prisma.rateLimitEntry.deleteMany({
+    where: { key, type, createdAt: { lt: windowStart } },
+  });
+
+  const count = await prisma.rateLimitEntry.count({
+    where: { key, type, createdAt: { gte: windowStart } },
+  });
+
+  if (count >= limit) {
+    return { allowed: false, msBeforeNext: windowMs };
   }
+
+  await prisma.rateLimitEntry.create({ data: { key, type } });
+  return { allowed: true };
+}
+
+export async function checkLoginRateLimit(ip: string): Promise<RateLimitResult> {
+  return check(ip, 'login', LOGIN_LIMIT, LOGIN_WINDOW_MS);
 }
 
 export async function checkResetRateLimit(email: string): Promise<RateLimitResult> {
-  try {
-    await resetLimiter.consume(email.toLowerCase());
-    return { allowed: true };
-  } catch (e: unknown) {
-    const err = e as { msBeforeNext?: number };
-    return { allowed: false, msBeforeNext: err.msBeforeNext };
-  }
+  return check(email.toLowerCase(), 'reset', RESET_LIMIT, RESET_WINDOW_MS);
 }

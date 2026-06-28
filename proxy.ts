@@ -22,7 +22,13 @@ export function proxy(req: NextRequest) {
   // Optimistic check: verify session cookie exists (real validation happens in each API route/page)
   const sessionCookie = req.cookies.get(SESSION_COOKIE);
   if (!sessionCookie?.value) {
-    return NextResponse.redirect(new URL('/login', req.url));
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    const url = req.nextUrl.clone();
+    url.pathname = '/login';
+    url.search = '';
+    return NextResponse.redirect(url);
   }
 
   // Role check uses x-user-role header set by the app (not validated here — API routes enforce this)

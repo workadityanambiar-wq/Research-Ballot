@@ -4,10 +4,22 @@ import { StatCard } from '@/components/ui/StatCard';
 import { Bar } from '@/components/ui/Bar';
 import { DirBadge, SevBadge } from '@/components/ui/Badge';
 import { Sparkline, Donut } from '@/components/ui/Charts';
-import { AUDIT } from '@/lib/data';
+import { useState, useEffect } from 'react';
+import type { AuditEntry } from '@/lib/types';
 
 export default function DashboardPage() {
   const { user, ideas, portfolio, votes } = useApp();
+  const [recentAudit, setRecentAudit] = useState<AuditEntry[]>([]);
+
+  useEffect(() => {
+    if (user?.role === 'CIO') {
+      fetch('/api/audit?limit=6')
+        .then(r => r.ok ? r.json() : { entries: [] })
+        .then(d => setRecentAudit(d.entries ?? []))
+        .catch(() => {});
+    }
+  }, [user?.role]);
+
   if (!user) return null;
 
   const perfData = [12, 14, 11, 16, 15, 18, 17, 19, 18, 21, 20, 22, 21, 23];
@@ -82,7 +94,8 @@ export default function DashboardPage() {
           <div className="sec-hdr" style={{ marginBottom: 8 }}><span className="sec-title">Ideas · Capital Flow</span><span className="badge badge-low pulse">LIVE</span></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 4 }}>
             {ideas.map(idea => {
-              const pct = (idea.totalCredits / 3420) * 100;
+              const maxCredits = Math.max(...ideas.map(i => i.totalCredits), 1);
+              const pct = (idea.totalCredits / maxCredits) * 100;
               return (
                 <div key={idea.id} style={{ textAlign: 'center' }}>
                   <div style={{ height: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: 3 }}>
@@ -98,16 +111,22 @@ export default function DashboardPage() {
 
         <div className="panel" style={{ padding: 12 }}>
           <div className="sec-hdr" style={{ marginBottom: 8 }}><span className="sec-title">Recent Activity</span></div>
-          {AUDIT.slice(0, 6).map((log, i) => (
-            <div key={log.id} style={{ display: 'flex', gap: 8, padding: '5px 0', borderBottom: i < 5 ? '1px solid var(--border)' : 'none', alignItems: 'flex-start' }}>
-              <span className="mono" style={{ fontSize: 8, color: 'var(--text4)', minWidth: 50, marginTop: 1 }}>{log.ts.split(' ')[1]}</span>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 10, color: 'var(--text2)', lineHeight: 1.3 }}>{log.action.replace(/_/g, ' ')}</div>
-                <div style={{ fontSize: 9, color: 'var(--text4)', marginTop: 1 }}>{log.detail.slice(0, 52)}…</div>
+          {user.role !== 'CIO' ? (
+            <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--text4)', fontSize: 10 }}>CIO access only</div>
+          ) : recentAudit.length === 0 ? (
+            <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--text4)', fontSize: 10 }}>No recent activity</div>
+          ) : (
+            recentAudit.map((log, i) => (
+              <div key={log.id} style={{ display: 'flex', gap: 8, padding: '5px 0', borderBottom: i < recentAudit.length - 1 ? '1px solid var(--border)' : 'none', alignItems: 'flex-start' }}>
+                <span className="mono" style={{ fontSize: 8, color: 'var(--text4)', minWidth: 50, marginTop: 1 }}>{log.ts.split(' ')[1]}</span>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: 10, color: 'var(--text2)', lineHeight: 1.3 }}>{log.action.replace(/_/g, ' ')}</div>
+                  <div style={{ fontSize: 9, color: 'var(--text4)', marginTop: 1 }}>{log.detail.slice(0, 52)}…</div>
+                </div>
+                <SevBadge sev={log.risk} />
               </div>
-              <SevBadge sev={log.risk} />
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
     </div>

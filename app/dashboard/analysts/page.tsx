@@ -1,17 +1,17 @@
 'use client';
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
-import { USERS } from '@/lib/data';
 import { TierBadge } from '@/components/ui/Badge';
 import { Bar } from '@/components/ui/Bar';
 import { ROLE_COLOR, TIER_W, TIER_COLOR } from '@/lib/permissions';
 
 export default function AnalystsPage() {
-  const { user } = useApp();
+  const { user, users, dataLoading } = useApp();
   const [tab, setTab] = useState<'overview' | 'idea' | 'allocator'>('overview');
   if (!user) return null;
+  if (dataLoading) return <div style={{ padding: 32, textAlign: 'center', color: 'var(--text4)', fontSize: 11 }}>Loading…</div>;
 
-  const allUsers = [...USERS].sort((a, b) => b.researchScore - a.researchScore);
+  const allUsers = [...users].sort((a, b) => b.researchScore - a.researchScore);
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
@@ -42,7 +42,7 @@ export default function AnalystsPage() {
                     <div style={{ fontSize: 9, color: 'var(--text3)', marginBottom: 4 }}>{labels[t]}</div>
                     <div className="mono" style={{ fontSize: 20, fontWeight: 700, color: c }}>Tier {t}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 6 }}>
-                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>{USERS.filter(u => u.tier === t).length} analysts</span>
+                      <span style={{ fontSize: 10, color: 'var(--text3)' }}>{users.filter(u => u.tier === t).length} analysts</span>
                       <span className="badge" style={{ background: `rgba(${c === 'var(--purple)' ? '168,85,247' : c === 'var(--accent)' ? '14,165,233' : '34,197,94'},.1)`, color: c, border: `1px solid ${c}`, fontSize: 9 }}>{TIER_W[t]}x weight</span>
                     </div>
                   </div>
@@ -95,7 +95,7 @@ export default function AnalystsPage() {
             <table className="tbl">
               <thead><tr><th>#</th><th>ANALYST</th><th>TIER</th><th style={{ textAlign: 'right' }}>{tab === 'idea' ? 'IDEA SCORE' : 'ALLOC SCORE'}</th><th style={{ textAlign: 'right' }}>HIT RATE</th><th style={{ textAlign: 'right' }}>AVG ALPHA</th><th style={{ textAlign: 'right' }}>SHARPE</th><th>PROFILE</th></tr></thead>
               <tbody>
-                {[...USERS].sort((a, b) => (tab === 'idea' ? b.ideaScore - a.ideaScore : b.allocScore - a.allocScore)).map((u, i) => {
+                {[...users].sort((a, b) => (tab === 'idea' ? b.ideaScore - a.ideaScore : b.allocScore - a.allocScore)).map((u, i) => {
                   const score = tab === 'idea' ? u.ideaScore : u.allocScore;
                   const diff = u.ideaScore - u.allocScore;
                   const profile = Math.abs(diff) < 5 ? 'Balanced' : diff > 10 ? 'Idea Specialist' : diff > 5 ? 'Better Picker' : diff < -10 ? 'Allocation Specialist' : 'Slight Allocator Edge';
