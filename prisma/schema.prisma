@@ -185,6 +185,15 @@ enum AuditAction {
   WATCHLIST_CREATED
   CALENDAR_EVENT_ADDED
   POST_MORTEM_CREATED
+  TRADE_PROPOSAL_CREATED
+  TRADE_PROPOSAL_APPROVED
+  POSITION_OPENED
+  POSITION_CLOSED
+  POSITION_UPDATED
+  PARTIAL_EXIT_RECORDED
+  TRADE_ALERT_CREATED
+  TRADE_JOURNAL_UPDATED
+  TRADE_CANCELLED
 }
 
 enum RiskLevel {
@@ -451,6 +460,7 @@ model Idea {
   allocations     Allocation[]
   researchDoc     ResearchDoc?
   postMortem      PostMortem?
+  trades          Trade[]
 
   @@index([weekId])
   @@index([authorId])
@@ -481,4 +491,210 @@ enum ApprovalStatus {
   PENDING
   REVIEW
   REJECTED
+}
+
+// ──────────────────────────────────────────────
+// Phase 4 — Portfolio & Trade Management
+// ──────────────────────────────────────────────
+
+enum TradeStatus {
+  PROPOSAL
+  APPROVED
+  ACTIVE
+  PARTIAL_EXIT
+  CLOSED
+  CANCELLED
+}
+
+enum ExecutionType {
+  ENTRY
+  ADD
+  PARTIAL_EXIT
+  FULL_EXIT
+  STOP_LOSS
+  STOP_ADJUSTED
+  TARGET_ADJUSTED
+  NOTE
+}
+
+enum AlertType {
+  STOP_LOSS_HIT
+  TARGET_HIT
+  EARNINGS_DATE
+  HIGH_DRAWDOWN
+  POSITION_AGE
+  CONCENTRATION
+  MARGIN_THRESHOLD
+  MANUAL_REVIEW
+}
+
+model Trade {
+  id              String      @id @default(cuid())
+  ideaId          String
+  idea            Idea        @relation(fields: [ideaId], references: [id])
+  status          TradeStatus @default(PROPOSAL)
+  side            String      @default("BUY")
+  exchange        String?
+  currency        String      @default("USD")
+  strategy        String?
+  timeHorizon     String?
+  convictionLevel Int?
+  holdingPeriod   String?
+  entryPrice      Float?
+  stopLoss        Float?
+  target1         Float?
+  target2         Float?
+  target3         Float?
+  riskReward      Float?
+  positionSize    Float?
+  maxCapital      Float?
+  maxExposurePct  Float?
+  tradeRationale  String?     @db.Text
+  cioNotes        String?     @db.Text
+  pmNotes         String?     @db.Text
+  executionNotes  String?     @db.Text
+  proposedBy      String
+  approvedBy      String?
+  proposedAt      DateTime    @default(now())
+  approvedAt      DateTime?
+  closedAt        DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  executions  TradeExecution[]
+  position    Position?
+  journal     TradeJournal[]
+  alerts      TradeAlert[]
+  history     PositionHistory[]
+  attribution PerformanceAttribution?
+
+  @@index([ideaId])
+  @@index([proposedBy])
+  @@index([status])
+}
+
+model TradeExecution {
+  id          String        @id @default(cuid())
+  tradeId     String
+  trade       Trade         @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  type        ExecutionType
+  price       Float
+  quantity    Float
+  value       Float
+  fees        Float         @default(0)
+  executedBy  String
+  executedAt  DateTime      @default(now())
+  notes       String?       @db.Text
+  createdAt   DateTime      @default(now())
+
+  @@index([tradeId])
+}
+
+model Position {
+  id              String    @id @default(cuid())
+  tradeId         String    @unique
+  trade           Trade     @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  ticker          String
+  direction       String
+  quantity        Float
+  avgCost         Float
+  currentPrice    Float?
+  marketValue     Float?
+  unrealizedPnl   Float?
+  realizedPnl     Float     @default(0)
+  returnPct       Float?
+  maxGain         Float?
+  maxDrawdown     Float?
+  daysHeld        Int       @default(0)
+  stopLoss        Float?
+  target          Float?
+  entryDate       DateTime
+  exitDate        DateTime?
+  lastPriceUpdate DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([ticker])
+}
+
+model PositionHistory {
+  id          String    @id @default(cuid())
+  tradeId     String
+  trade       Trade     @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  eventType   String
+  description String    @db.Text
+  price       Float?
+  quantity    Float?
+  value       Float?
+  createdBy   String
+  createdAt   DateTime  @default(now())
+
+  @@index([tradeId])
+  @@index([createdAt])
+}
+
+model TradeJournal {
+  id          String    @id @default(cuid())
+  tradeId     String
+  trade       Trade     @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  field       String
+  content     String    @db.Text
+  authorId    String
+  authorRole  String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([tradeId, field])
+  @@index([tradeId])
+}
+
+model PortfolioSnapshot {
+  id            String    @id @default(cuid())
+  snapshotDate  DateTime
+  totalEquity   Float     @default(0)
+  cashBalance   Float     @default(0)
+  totalExposure Float     @default(0)
+  netExposure   Float     @default(0)
+  grossExposure Float     @default(0)
+  unrealizedPnl Float     @default(0)
+  realizedPnl   Float     @default(0)
+  openPositions Int       @default(0)
+  createdAt     DateTime  @default(now())
+
+  @@index([snapshotDate])
+}
+
+model TradeAlert {
+  id        String    @id @default(cuid())
+  tradeId   String?
+  trade     Trade?    @relation(fields: [tradeId], references: [id], onDelete: SetNull)
+  alertType AlertType
+  message   String    @db.Text
+  severity  String    @default("MEDIUM")
+  isRead    Boolean   @default(false)
+  readAt    DateTime?
+  readBy    String?
+  createdAt DateTime  @default(now())
+
+  @@index([isRead])
+  @@index([tradeId])
+}
+
+model PerformanceAttribution {
+  id               String    @id @default(cuid())
+  tradeId          String    @unique
+  trade            Trade     @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  researchQuality  Int?
+  entryTiming      Int?
+  exitTiming       Int?
+  catalystOutcome  Int?
+  riskMgmt         Int?
+  positionSizing   Int?
+  executionQuality Int?
+  analystComment   String?   @db.Text
+  pmComment        String?   @db.Text
+  cioComment       String?   @db.Text
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }

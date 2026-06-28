@@ -257,3 +257,152 @@ export interface Allocation {
   submittedAt: string;
   weekId: string;
 }
+
+// ── Phase 4 — Portfolio & Trade Management ──
+
+export type TradeStatus = 'PROPOSAL' | 'APPROVED' | 'ACTIVE' | 'PARTIAL_EXIT' | 'CLOSED' | 'CANCELLED';
+export type ExecutionType = 'ENTRY' | 'ADD' | 'PARTIAL_EXIT' | 'FULL_EXIT' | 'STOP_LOSS' | 'STOP_ADJUSTED' | 'TARGET_ADJUSTED' | 'NOTE';
+export type AlertType = 'STOP_LOSS_HIT' | 'TARGET_HIT' | 'EARNINGS_DATE' | 'HIGH_DRAWDOWN' | 'POSITION_AGE' | 'CONCENTRATION' | 'MARGIN_THRESHOLD' | 'MANUAL_REVIEW';
+
+export interface Trade {
+  id: string;
+  ideaId: string;
+  status: TradeStatus;
+  side: string;
+  exchange: string | null;
+  currency: string;
+  strategy: string | null;
+  timeHorizon: string | null;
+  convictionLevel: number | null;
+  holdingPeriod: string | null;
+  entryPrice: number | null;
+  stopLoss: number | null;
+  target1: number | null;
+  target2: number | null;
+  target3: number | null;
+  riskReward: number | null;
+  positionSize: number | null;
+  maxCapital: number | null;
+  maxExposurePct: number | null;
+  tradeRationale: string | null;
+  cioNotes: string | null;
+  pmNotes: string | null;
+  executionNotes: string | null;
+  proposedBy: string;
+  approvedBy: string | null;
+  proposedAt: string;
+  approvedAt: string | null;
+  closedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  idea?: Partial<Idea>;
+  position?: Position | null;
+}
+
+export interface TradeExecution {
+  id: string;
+  tradeId: string;
+  type: ExecutionType;
+  price: number;
+  quantity: number;
+  value: number;
+  fees: number;
+  executedBy: string;
+  executedAt: string;
+  notes: string | null;
+  createdAt: string;
+}
+
+export interface Position {
+  id: string;
+  tradeId: string;
+  ticker: string;
+  direction: string;
+  quantity: number;
+  avgCost: number;
+  currentPrice: number | null;
+  marketValue: number | null;
+  unrealizedPnl: number | null;
+  realizedPnl: number;
+  returnPct: number | null;
+  maxGain: number | null;
+  maxDrawdown: number | null;
+  daysHeld: number;
+  stopLoss: number | null;
+  target: number | null;
+  entryDate: string;
+  exitDate: string | null;
+  lastPriceUpdate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PositionHistory {
+  id: string;
+  tradeId: string;
+  eventType: string;
+  description: string;
+  price: number | null;
+  quantity: number | null;
+  value: number | null;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface TradeJournal {
+  id: string;
+  tradeId: string;
+  field: string;
+  content: string;
+  authorId: string;
+  authorRole: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TradeAlert {
+  id: string;
+  tradeId: string | null;
+  alertType: AlertType;
+  message: string;
+  severity: string;
+  isRead: boolean;
+  readAt: string | null;
+  readBy: string | null;
+  createdAt: string;
+}
+
+export interface PerformanceAttribution {
+  id: string;
+  tradeId: string;
+  researchQuality: number | null;
+  entryTiming: number | null;
+  exitTiming: number | null;
+  catalystOutcome: number | null;
+  riskMgmt: number | null;
+  positionSizing: number | null;
+  executionQuality: number | null;
+  analystComment: string | null;
+  pmComment: string | null;
+  cioComment: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PortfolioSummary {
+  totalEquity: number;
+  cashBalance: number;
+  totalExposure: number;
+  netExposure: number;
+  grossExposure: number;
+  unrealizedPnl: number;
+  realizedPnl: number;
+  openPositions: number;
+  closedPositions: number;
+  longExposure: number;
+  shortExposure: number;
+  winRate: number;
+  avgGain: number;
+  avgLoss: number;
+  profitFactor: number;
+}
