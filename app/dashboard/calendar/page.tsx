@@ -151,9 +151,9 @@ export default function CalendarPage() {
           <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Research Calendar</h1>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
             Earnings, macro events, company catalysts
-            {ecoSource === 'finnhub' && (
+            {ecoSource === 'fmp' && (
               <span style={{ marginLeft: 8, color: 'var(--purple)', fontWeight: 600 }}>
-                · Economic data via Finnhub
+                · Economic data via FMP
               </span>
             )}
             {ecoSource === 'cache' && (
@@ -250,7 +250,7 @@ export default function CalendarPage() {
                 </span>
                 {showEco && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4, fontSize: 9, color: 'var(--text4)' }}>
-                    <span style={{ fontSize: 8, color: 'var(--purple)' }}>★</span>Eco (Finnhub)
+                    <span style={{ fontSize: 8, color: 'var(--purple)' }}>★</span>Eco (FMP)
                   </span>
                 )}
               </div>
@@ -263,7 +263,7 @@ export default function CalendarPage() {
             <div style={{ padding: '8px 16px', background: 'rgba(168,85,247,.06)', borderBottom: '1px solid rgba(168,85,247,.15)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <span style={{ fontSize: 9, color: 'var(--purple)' }}>★</span>
               <span style={{ fontSize: 10, color: 'var(--text3)', flex: 1 }}>
-                Economic data unavailable — set FINNHUB_API_KEY in environment variables.
+                Economic data unavailable — set FMP_API_KEY in environment variables.
               </span>
             </div>
           )}
@@ -374,7 +374,7 @@ export default function CalendarPage() {
                     <>
                       {selectedRes.length > 0 && (
                         <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--purple)', letterSpacing: '.08em', padding: '8px 0 4px', textTransform: 'uppercase' }}>
-                          Economic Events · Finnhub
+                          Economic Events · FMP
                         </div>
                       )}
                       {selectedEco.map(e => (
@@ -499,7 +499,7 @@ export default function CalendarPage() {
                   <div key={imp} style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 3 }}>
                     <span style={{ fontSize: 9, color: IMP_COLOR[imp], width: 22 }}>{IMP_STARS[imp]}</span>
                     <span style={{ fontSize: 10, color: 'var(--text3)' }}>
-                      {imp === 1 ? 'Low' : imp === 2 ? 'Medium' : 'High'} Impact (Finnhub)
+                      {imp === 1 ? 'Low' : imp === 2 ? 'Medium' : 'High'} Impact (FMP)
                     </span>
                   </div>
                 ))}

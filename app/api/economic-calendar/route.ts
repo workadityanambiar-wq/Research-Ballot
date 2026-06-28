@@ -17,45 +17,46 @@ export interface EcoEvent {
 const _cache = new Map<string, { events: EcoEvent[]; at: number }>();
 const TTL = 4 * 3600 * 1000; // 4 h
 
-interface FinnhubEvent {
+interface FmpEvent {
   event:    string;
+  date:     string;   // "YYYY-MM-DD HH:MM:SS" UTC
   country:  string;
-  impact:   string;         // "low" | "medium" | "high"
   actual:   string | null;
   estimate: string | null;
-  prev:     string | null;
-  time:     string;         // "YYYY-MM-DD HH:MM:SS" UTC
+  previous: string | null;
+  impact:   string;   // "Low" | "Medium" | "High"
 }
 
 function toImportance(impact: string): 1 | 2 | 3 {
-  if (impact === 'high')   return 3;
-  if (impact === 'medium') return 2;
+  const s = (impact ?? '').toLowerCase();
+  if (s === 'high')   return 3;
+  if (s === 'medium') return 2;
   return 1;
 }
 
-async function fetchFromFinnhub(dateFrom: string, dateTo: string): Promise<EcoEvent[]> {
-  const apiKey = process.env.FINNHUB_API_KEY;
-  if (!apiKey) throw new Error('FINNHUB_API_KEY not configured');
+async function fetchFromFmp(dateFrom: string, dateTo: string): Promise<EcoEvent[]> {
+  const apiKey = process.env.FMP_API_KEY;
+  if (!apiKey) throw new Error('FMP_API_KEY not configured');
 
-  const url = `https://finnhub.io/api/v1/calendar/economic?from=${dateFrom}&to=${dateTo}&token=${apiKey}`;
+  const url = `https://financialmodelingprep.com/api/v3/economic_calendar?from=${dateFrom}&to=${dateTo}&apikey=${apiKey}`;
   const res = await fetch(url, { cache: 'no-store', signal: AbortSignal.timeout(10000) });
 
-  if (!res.ok) throw new Error(`Finnhub ${res.status} ${res.statusText}`);
+  if (!res.ok) throw new Error(`FMP ${res.status} ${res.statusText}`);
 
-  const json = await res.json() as { economicCalendar?: FinnhubEvent[] };
-  const items = json.economicCalendar ?? [];
+  const items = await res.json() as FmpEvent[];
+  if (!Array.isArray(items)) throw new Error('Unexpected FMP response shape');
 
   return items
-    .filter(e => e.event && e.time)
+    .filter(e => e.event && e.date)
     .map(e => ({
-      id:         `eco-${e.country}-${e.time}-${e.event}`.replace(/\s+/g, '-'),
+      id:         `eco-${e.country}-${e.date}-${e.event}`.replace(/\s+/g, '-'),
       title:      e.event,
-      date:       new Date(e.time.replace(' ', 'T') + 'Z').toISOString(),
+      date:       new Date(e.date.replace(' ', 'T') + 'Z').toISOString(),
       currency:   e.country ?? 'US',
       importance: toImportance(e.impact),
       actual:     e.actual   ?? null,
       forecast:   e.estimate ?? null,
-      previous:   e.prev     ?? null,
+      previous:   e.previous ?? null,
     }));
 }
 
@@ -76,9 +77,9 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const events = await fetchFromFinnhub(dateFrom, dateTo);
+    const events = await fetchFromFmp(dateFrom, dateTo);
     _cache.set(cacheKey, { events, at: Date.now() });
-    return NextResponse.json({ events, source: 'finnhub', fetchedAt: new Date().toISOString() });
+    return NextResponse.json({ events, source: 'fmp', fetchedAt: new Date().toISOString() });
   } catch (err) {
     if (hit) {
       return NextResponse.json({ events: hit.events, source: 'stale-cache', fetchedAt: new Date(hit.at).toISOString() });
