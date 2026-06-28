@@ -25,8 +25,23 @@ type Readiness = {
   checklist: { key: string; label: string; done: boolean; weight: number }[];
   openChallenges: number; openQuestions: number;
 };
+type QuantScore = {
+  finalQuantScore: number; quantLabel: string;
+  trendScore: number; trendLabel: string;
+  momentumScore: number; momentumLabel: string;
+  trendQualityScore: number; trendQualityLabel: string;
+  maAlignmentScore: number; volatilityScore: number; volatilityLabel: string;
+  srScore: number; breakoutScore: number; volumeScore: number;
+  rsi14: number; adx14: number;
+};
+
 type CommitteeData = {
-  idea: { id: string; ticker: string; dir: string; finalScore: number | null; approvalStatus: string };
+  idea: {
+    id: string; ticker: string; dir: string; approvalStatus: string;
+    finalScore: number | null; quantScore: number; pmScore: number; skillScore: number;
+    conv: number; rr: number; expRet: number; thesis: string;
+    quantScoreData: QuantScore | null;
+  };
   researchDoc: { id: string; overview: string | null } | null;
   questions: Question[];
   challenges: Challenge[];
@@ -172,10 +187,15 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
             <span className={`badge ${idea.dir === 'LONG' ? 'badge-long' : 'badge-short'}`}>{idea.dir}</span>
             <span className="badge badge-accent">{idea.approvalStatus}</span>
           </div>
-          <div className="text-[var(--text3)] text-sm mt-1">
-            Final Score: <span className="font-mono text-[var(--text)]">{idea.finalScore?.toFixed(1) ?? '—'}</span>
+          <div className="text-[var(--text3)] text-sm mt-1 flex items-center gap-4 flex-wrap">
+            <span>Final Score: <span className="font-mono text-[var(--text)]">{idea.finalScore?.toFixed(1) ?? '—'}</span></span>
+            {idea.quantScore > 0 && (
+              <span>Quant: <span className="font-mono" style={{ color: idea.quantScore >= 80 ? 'var(--long)' : idea.quantScore >= 70 ? 'var(--accent)' : idea.quantScore >= 60 ? 'var(--warn)' : 'var(--short)' }}>{idea.quantScore.toFixed(1)}</span>
+                {idea.quantScoreData && <span className="text-xs ml-1 text-[var(--text4)]">· {idea.quantScoreData.quantLabel}</span>}
+              </span>
+            )}
             {readiness && (
-              <span className="ml-4">
+              <span>
                 Readiness: <span className={`font-mono ${readiness.ready ? 'text-[var(--long)]' : 'text-[var(--warn)]'}`}>
                   {readiness.pct}%
                 </span>
@@ -213,7 +233,7 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
 
       {/* Overview */}
       {tab === 'Overview' && readiness && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="panel p-5">
             <div className="sec-title mb-4">Research Readiness</div>
             <div className="flex items-center gap-4 mb-4">
@@ -260,6 +280,60 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
             {data.researchDoc?.overview && (
               <div className="mt-4 p-3 rounded bg-[var(--panel2)] text-sm text-[var(--text2)]">
                 {data.researchDoc.overview.slice(0, 300)}{data.researchDoc.overview.length > 300 ? '…' : ''}
+              </div>
+            )}
+          </div>
+
+          {/* Quant Breakdown */}
+          <div className="panel p-5">
+            <div className="sec-title mb-4">Quant Score Breakdown</div>
+            {idea.quantScoreData ? (() => {
+              const qd = idea.quantScoreData!;
+              const sc = (v: number) => v >= 8 ? 'var(--long)' : v >= 7 ? 'var(--accent)' : v >= 6 ? 'var(--warn)' : 'var(--short)';
+              return (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12, padding: '6px 10px', background: 'var(--bg)', borderRadius: 5 }}>
+                    <span style={{ fontSize: 11, color: 'var(--text3)' }}>{qd.quantLabel}</span>
+                    <span className="font-mono font-bold text-base" style={{ color: idea.quantScore >= 80 ? 'var(--long)' : idea.quantScore >= 70 ? 'var(--accent)' : idea.quantScore >= 60 ? 'var(--warn)' : 'var(--short)' }}>
+                      {qd.finalQuantScore.toFixed(1)} / 100
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {([
+                      ['Trend (25%)', qd.trendScore, qd.trendLabel],
+                      ['Momentum (20%)', qd.momentumScore, qd.momentumLabel],
+                      ['Trend Quality (15%)', qd.trendQualityScore, qd.trendQualityLabel],
+                      ['MA Alignment (15%)', qd.maAlignmentScore, ''],
+                      ['Volatility (10%)', qd.volatilityScore, qd.volatilityLabel],
+                      ['S/R Levels (10%)', qd.srScore, ''],
+                      ['Breakout (5%)', qd.breakoutScore, ''],
+                      ['Volume (5%)', qd.volumeScore, ''],
+                    ] as [string, number, string][]).map(([l, v, lbl]) => (
+                      <div key={l}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+                          <span style={{ fontSize: 10, color: 'var(--text4)' }}>{l}{lbl ? ` · ${lbl}` : ''}</span>
+                          <span className="font-mono text-xs" style={{ color: sc(v) }}>{v.toFixed(1)}</span>
+                        </div>
+                        <div style={{ height: 4, background: 'var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                          <div style={{ height: '100%', borderRadius: 4, width: `${(v / 10) * 100}%`, background: sc(v), transition: 'width .4s' }} />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginTop: 10 }}>
+                    {[['RSI 14', qd.rsi14.toFixed(1)], ['ADX 14', qd.adx14.toFixed(1)]].map(([k, v]) => (
+                      <div key={k} style={{ padding: '5px 8px', background: 'var(--bg)', borderRadius: 4, border: '1px solid var(--border)' }}>
+                        <div style={{ fontSize: 8, color: 'var(--text4)' }}>{k}</div>
+                        <div className="font-mono text-sm font-bold">{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              );
+            })() : (
+              <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text4)', fontSize: 12 }}>
+                No quant data<br />
+                <span style={{ fontSize: 10 }}>(submitted before MT5 integration)</span>
               </div>
             )}
           </div>

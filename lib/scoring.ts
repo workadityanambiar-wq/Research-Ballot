@@ -121,12 +121,15 @@ export function applyScores(ideas: Idea[], votes: VoteMap, users: User[]): Idea[
 export function computeScores(params: {
   conv: number; expRet: number; rr: number;
   authorIdeaScore: number; totalCredits: number; maxCreditsAnyIdea: number;
+  mt5QuantScore?: number;
 }) {
-  const { conv, expRet, rr, authorIdeaScore, totalCredits, maxCreditsAnyIdea } = params;
+  const { conv, expRet, rr, authorIdeaScore, totalCredits, maxCreditsAnyIdea, mt5QuantScore } = params;
   const pmScore = maxCreditsAnyIdea > 0 ? (totalCredits / maxCreditsAnyIdea) * 100 : 0;
   const rrScoreVal = clip((rr / 3) * 100);
   const skill = authorIdeaScore;
-  const quant = (conv / 10) * 60 + (Math.min(expRet, 30) / 30) * 40;
-  const finalScore = pmScore * 0.40 + skill * 0.25 + rrScoreVal * 0.20 + quant * 0.15;
+  const quant = mt5QuantScore && mt5QuantScore > 0
+    ? mt5QuantScore
+    : (conv / 10) * 60 + (Math.min(expRet, 30) / 30) * 40;
+  const finalScore = FINAL_WEIGHTS.pm * pmScore + FINAL_WEIGHTS.skill * skill + FINAL_WEIGHTS.rr * rrScoreVal + FINAL_WEIGHTS.quant * quant;
   return { pmScore, rrScore: rrScoreVal, skillScore: skill, quantScore: quant, finalScore };
 }

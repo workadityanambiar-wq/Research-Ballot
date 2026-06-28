@@ -3,6 +3,46 @@ export type Tier = 'A+' | 'A' | 'B';
 export type ApprovalStatus = 'APPROVED' | 'PENDING' | 'REVIEW' | 'REJECTED';
 export type Direction = 'LONG' | 'SHORT';
 
+export type QuantLabel = 'Exceptional Technical Alignment' | 'Strong' | 'Good' | 'Neutral' | 'Weak';
+export type TrendLabel = 'Strong Bullish' | 'Bullish' | 'Neutral' | 'Bearish' | 'Strong Bearish';
+export type MomentumLabel = 'Very Strong' | 'Strong' | 'Neutral' | 'Weak' | 'Very Weak';
+export type VolatilityLabel = 'Low' | 'Normal' | 'High' | 'Extreme';
+export type TrendQualityLabel = 'Trending' | 'Weak Trend' | 'Sideways';
+
+export interface IdeaQuantScore {
+  id: string;
+  ideaId: string;
+  direction: string;
+  // Raw indicators
+  ema20: number; ema50: number; ema100: number; ema200: number;
+  rsi14: number;
+  macdLine: number; macdSignal: number; macdHist: number;
+  atr14: number; atrPct: number; histVol: number;
+  adx14: number; diPlus: number; diMinus: number;
+  high52w: number; low52w: number;
+  nearestSupport: number | null; nearestResistance: number | null;
+  distToSupport: number | null; distToResistance: number | null;
+  avgVolume20: number | null; relVolume: number | null;
+  currentRange: number; avgRange: number;
+  // MA flags
+  priceAboveEma20: boolean; priceAboveEma50: boolean;
+  priceAboveEma100: boolean; priceAboveEma200: boolean;
+  ema20AboveEma50: boolean; ema50AboveEma100: boolean; ema100AboveEma200: boolean;
+  // Component scores (0-10)
+  trendScore: number; momentumScore: number; volatilityScore: number;
+  trendQualityScore: number; maAlignmentScore: number;
+  srScore: number; breakoutScore: number; volumeScore: number;
+  // Labels
+  trendLabel: TrendLabel; momentumLabel: MomentumLabel;
+  volatilityLabel: VolatilityLabel; trendQualityLabel: TrendQualityLabel;
+  quantLabel: QuantLabel;
+  // Final
+  finalQuantScore: number;
+  calculatedAt: string;
+  timeframe: string;
+  createdAt: string; updatedAt: string;
+}
+
 export interface User {
   id: string;
   email: string;
@@ -19,6 +59,89 @@ export interface User {
   ideaScore: number;
   allocScore: number;
   researchScore: number;
+}
+
+export interface IdeaMarketSnapshot {
+  id: string;
+  ideaId: string;
+  analystId: string;
+  analystRole: string;
+  // Immutable MT5 data at submission
+  symbol: string;
+  cmp: number;
+  bid: number;
+  ask: number;
+  spread: number;
+  mt5ServerTime: string;
+  marketStatus: string;
+  exchange: string;
+  timeZone: string;
+  // Idea snapshot
+  direction: string;
+  targetPrice: number;
+  stopPrice: number;
+  timeHorizon: string;
+  weekId: string;
+  weekNumber: number;
+  votingCycle: string;
+  // Submission metadata
+  submittedAtUtc: string;
+  tradingDay: string;
+  marketSession: string;
+  submissionIp: string | null;
+  submissionDevice: string | null;
+  submissionBrowser: string | null;
+  // Live performance (updated periodically)
+  currentPrice: number | null;
+  currentPnlPct: number | null;
+  currentPnlAbs: number | null;
+  distanceToTarget: number | null;
+  distanceToStop: number | null;
+  mfe: number | null;
+  mae: number | null;
+  tradeStatus: 'OPEN' | 'TARGET_HIT' | 'STOP_HIT' | 'EXPIRED' | 'CLOSED';
+  lastPriceUpdate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Mt5Quote {
+  symbol: string;
+  bid: number;
+  ask: number;
+  mid: number;
+  spread: number;
+  server_time: string;
+  market_status: string;
+  market_session: string;
+  exchange: string;
+  time_zone: string;
+  digits: number;
+  trading_day: string;
+  week_number: number;
+  description: string;
+}
+
+export interface Mt5QuantData {
+  symbol: string; direction: string; price: number; calculated_at: string;
+  ema20: number; ema50: number; ema100: number; ema200: number;
+  rsi14: number; macd_line: number; macd_signal: number; macd_hist: number;
+  atr14: number; atr_pct: number; hist_vol: number;
+  adx14: number; di_plus: number; di_minus: number;
+  high52w: number; low52w: number;
+  nearest_support: number | null; nearest_resistance: number | null;
+  dist_to_support: number | null; dist_to_resistance: number | null;
+  avg_volume20: number | null; rel_volume: number | null;
+  current_range: number; avg_range: number;
+  price_above_ema20: boolean; price_above_ema50: boolean;
+  price_above_ema100: boolean; price_above_ema200: boolean;
+  ema20_above_ema50: boolean; ema50_above_ema100: boolean; ema100_above_ema200: boolean;
+  trend_score: number; momentum_score: number; volatility_score: number;
+  trend_quality_score: number; ma_alignment_score: number;
+  sr_score: number; breakout_score: number; volume_score: number;
+  trend_label: string; momentum_label: string; volatility_label: string;
+  trend_quality_label: string; quant_label: string;
+  quant_score: number;
 }
 
 export interface Idea {
@@ -54,6 +177,8 @@ export interface Idea {
   earningRevScore: number;
   approvalStatus: ApprovalStatus;
   imageUrl?: string;
+  marketSnapshot?: IdeaMarketSnapshot;
+  quantScoreData?: IdeaQuantScore;
 }
 
 export type VoteMap = Record<string, Record<string, number>>;
@@ -223,6 +348,17 @@ export interface CalendarEvent {
   importance: string;
   createdBy: string;
   createdAt: string;
+}
+
+export interface EcoEvent {
+  id: string;
+  title: string;
+  date: string;        // ISO UTC
+  currency: string;
+  importance: 1 | 2 | 3;
+  actual: string | null;
+  forecast: string | null;
+  previous: string | null;
 }
 
 export interface PostMortem {

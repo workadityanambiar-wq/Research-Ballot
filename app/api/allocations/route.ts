@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
-import { WEEK_ID } from '@/lib/data';
+import { WEEK_ID, ROUND_BUDGET, getPhase } from '@/lib/data';
 import { getSessionUser } from '@/lib/session-helpers';
 import { scoreIdeas } from '@/lib/scoring';
 import type { Idea, User, VoteMap } from '@/lib/types';
@@ -38,6 +38,42 @@ export async function POST(req: NextRequest) {
 
   const { allocations: allocs, round = 1, weekId = WEEK_ID } = body;
   if (!allocs?.length) return NextResponse.json({ error: 'No allocations provided' }, { status: 400 });
+
+  // Phase enforcement — only accept allocations when the round is open
+  const phase = getPhase();
+  const roundPhase: Record<number, string> = { 1: 'round1', 2: 'round2' };
+  if (phase !== roundPhase[round]) {
+    return NextResponse.json({ error: `Round ${round} is not currently open` }, { status: 400 });
+  }
+
+  // Validate individual amounts: must be positive integers
+  for (const a of allocs) {
+    if (!Number.isInteger(a.amount) || a.amount <= 0) {
+      return NextResponse.json({ error: 'Each allocation must be a positive integer' }, { status: 400 });
+    }
+  }
+
+  // Validate total equals exactly ROUND_BUDGET
+  const total = allocs.reduce((s, a) => s + a.amount, 0);
+  if (total !== ROUND_BUDGET) {
+    return NextResponse.json(
+      { error: `Total must equal exactly $${ROUND_BUDGET.toLocaleString()} (got $${total.toLocaleString()})` },
+      { status: 400 },
+    );
+  }
+
+  // Validate no self-voting
+  const ideaIds = allocs.map(a => a.ideaId);
+  const ownIdeas = await prisma.idea.count({ where: { id: { in: ideaIds }, authorId: legacyId, weekId } });
+  if (ownIdeas > 0) {
+    return NextResponse.json({ error: 'Cannot allocate to your own ideas' }, { status: 400 });
+  }
+
+  // Validate no duplicate ideaIds in the same submission
+  const uniqueIdeaIds = new Set(ideaIds);
+  if (uniqueIdeaIds.size !== ideaIds.length) {
+    return NextResponse.json({ error: 'Duplicate idea IDs in allocation' }, { status: 400 });
+  }
 
   const existing = await prisma.allocation.count({ where: { userId: legacyId, round, weekId } });
   if (existing > 0) {

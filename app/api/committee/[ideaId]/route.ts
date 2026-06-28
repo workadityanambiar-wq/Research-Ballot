@@ -8,7 +8,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ idea
   const { ideaId } = await params;
 
   const [idea, researchDoc, questions, challenges, justifications, revisions, meetings] = await Promise.all([
-    prisma.idea.findUnique({ where: { id: ideaId } }),
+    prisma.idea.findUnique({ where: { id: ideaId }, include: { quantScoreData: true } }),
     prisma.researchDoc.findUnique({
       where: { ideaId },
       include: {
@@ -30,6 +30,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ idea
   if (!idea) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const serDt = (d: Date | null | undefined) => d?.toISOString?.() ?? null;
+  const qs = idea.quantScoreData;
   const serIdea = {
     ...idea,
     dir: idea.dir as string,
@@ -37,6 +38,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ idea
     submittedAt: idea.submittedAt.toISOString(),
     createdAt: idea.createdAt.toISOString(),
     updatedAt: idea.updatedAt.toISOString(),
+    quantScoreData: qs ? {
+      ...qs,
+      calculatedAt: qs.calculatedAt.toISOString(),
+      createdAt: qs.createdAt.toISOString(),
+      updatedAt: qs.updatedAt.toISOString(),
+    } : null,
   };
 
   return NextResponse.json({
@@ -55,7 +62,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ idea
     } : null,
     questions: questions.map(q => ({ ...q, answeredAt: serDt(q.answeredAt), createdAt: q.createdAt.toISOString(), updatedAt: q.updatedAt.toISOString() })),
     challenges: challenges.map(c => ({ ...c, resolvedAt: serDt(c.resolvedAt), createdAt: c.createdAt.toISOString(), updatedAt: c.updatedAt.toISOString() })),
-    justifications: justifications.map(j => ({ ...j, createdAt: j.createdAt.toISOString(), updatedAt: j.updatedAt.toISOString() })),
+    voteJustifications: justifications.map(j => ({ ...j, createdAt: j.createdAt.toISOString(), updatedAt: j.updatedAt.toISOString() })),
     revisions,
     meetings: meetings.map(m => ({
       ...m,

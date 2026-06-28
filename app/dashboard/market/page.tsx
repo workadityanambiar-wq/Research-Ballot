@@ -111,12 +111,16 @@ function AllocModal({ idea, remaining, onConfirm, onClose }: {
         <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 3 }}>Allocate Research Capital</div>
         <div style={{ fontSize: 10, color: 'var(--text3)', marginBottom: 16 }}>{HEADLINES[idea.id] ?? idea.ticker}</div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 16 }}>
           {([
             ['Entry', `$${idea.entry.toFixed(2)}`, ''],
             ['Target', `$${idea.target.toFixed(2)}`, 'var(--long)'],
-            ['Final Score', idea.finalScore.toFixed(1), 'var(--accent)'],
             ['R / R', `${idea.rr}×`, 'var(--long)'],
+            ['Final Score', idea.finalScore.toFixed(1), 'var(--accent)'],
+            ['Conviction', `${idea.conv}/10`, 'var(--accent)'],
+            idea.quantScore > 0
+              ? ['Quant', `${idea.quantScore.toFixed(0)}/100`, idea.quantScore >= 80 ? 'var(--long)' : idea.quantScore >= 70 ? 'var(--accent)' : idea.quantScore >= 60 ? 'var(--warn)' : 'var(--short)']
+              : ['Exp. Return', `+${idea.expRet}%`, 'var(--long)'],
           ] as [string, string, string][]).map(([l, val, c]) => (
             <div key={l} className="panel2" style={{ padding: '8px 10px' }}>
               <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 2 }}>{l}</div>
@@ -292,7 +296,9 @@ function ResearchCard({ idea, voteMap, userId, canVote, onAllocate, idx }: {
             ['Conviction', `${idea.conv}/10`, 'var(--accent)'],
             ['Exp Return', `${retSign}${idea.expRet}%`, lc],
             ['Risk / RWD', `${idea.rr}×`, 'var(--text2)'],
-            ['Win Prob', `${winProb}%`, 'var(--purple)'],
+            [idea.quantScore > 0 ? 'Quant' : 'Win Prob',
+             idea.quantScore > 0 ? `${idea.quantScore.toFixed(0)}/100` : `${winProb}%`,
+             idea.quantScore >= 80 ? 'var(--long)' : idea.quantScore >= 70 ? 'var(--accent)' : idea.quantScore >= 60 ? 'var(--warn)' : idea.quantScore > 0 ? 'var(--short)' : 'var(--purple)'],
           ] as [string, string, string][]).map(([l, v, c]) => (
             <div key={l}>
               <div style={{ fontSize: 8, fontWeight: 700, color: 'var(--text4)', letterSpacing: '.08em', textTransform: 'uppercase', marginBottom: 3 }}>{l}</div>
@@ -300,6 +306,28 @@ function ResearchCard({ idea, voteMap, userId, canVote, onAllocate, idx }: {
             </div>
           ))}
         </div>
+
+        {/* Live P&L row */}
+        {(() => {
+          const ms = idea.marketSnapshot;
+          if (!ms || ms.currentPnlPct == null) return null;
+          const up = ms.currentPnlPct >= 0;
+          const pnlColor = ms.tradeStatus === 'TARGET_HIT' ? 'var(--long)' : ms.tradeStatus === 'STOP_HIT' ? 'var(--short)' : up ? 'var(--long)' : 'var(--short)';
+          return (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', background: 'var(--bg)', borderRadius: 5, border: '1px solid var(--border)', marginTop: -4 }}>
+              <span style={{ fontSize: 9, color: 'var(--text4)', fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase' }}>Live P&L</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                {ms.currentPrice != null && <span className="mono" style={{ fontSize: 9, color: 'var(--text3)' }}>${ms.currentPrice.toFixed(2)}</span>}
+                <span className="mono" style={{ fontSize: 12, fontWeight: 700, color: pnlColor }}>{up ? '+' : ''}{ms.currentPnlPct.toFixed(2)}%</span>
+                {ms.tradeStatus !== 'OPEN' && (
+                  <span style={{ fontSize: 8, fontWeight: 700, padding: '1px 5px', borderRadius: 3, background: ms.tradeStatus === 'TARGET_HIT' ? 'rgba(22,163,74,.12)' : 'rgba(220,38,38,.1)', color: pnlColor }}>
+                    {ms.tradeStatus.replace('_', ' ')}
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Catalyst chips */}
         <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', alignItems: 'center' }}>
@@ -350,7 +378,7 @@ function ResearchCard({ idea, voteMap, userId, canVote, onAllocate, idx }: {
 // ── Filter toolbar ───────────────────────────────────────────────────────────
 const FILTERS = [
   ['all', 'All Ideas'], ['approved', 'Approved'], ['long', 'LONG'], ['short', 'SHORT'],
-  ['top3', 'Top 3'], ['highret', 'High Return'],
+  ['top3', 'Top 3'], ['highret', 'High Return'], ['quant', 'Strong Quant ≥70'],
 ] as const;
 
 // ── Page ─────────────────────────────────────────────────────────────────────
@@ -383,6 +411,7 @@ export default function MarketPage() {
     if (filter === 'approved') return idea.approvalStatus === 'APPROVED';
     if (filter === 'top3') return idea.rank <= 3;
     if (filter === 'highret') return idea.expRet > 17;
+    if (filter === 'quant') return idea.quantScore >= 70;
     return true;
   }).sort((a, b) => b.totalCredits - a.totalCredits), [ideas, filter, search]);
 

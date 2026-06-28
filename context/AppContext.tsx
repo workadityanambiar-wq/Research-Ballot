@@ -75,7 +75,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const refreshIdeas = useCallback(async () => {
     try {
-      const data = await fetch(`/api/ideas?weekId=${WEEK_ID}`).then(r => r.ok ? r.json() : []);
+      const data = await fetch(`/api/ideas?weekId=${WEEK_ID}&withSnapshot=1`).then(r => r.ok ? r.json() : []);
       setRawIdeas(data.length ? data : IDEAS0);
     } catch { setRawIdeas(IDEAS0); }
   }, []);

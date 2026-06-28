@@ -53,15 +53,22 @@ export default function DashboardPage() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         <div className="panel" style={{ padding: 12 }}>
           <div className="sec-hdr" style={{ marginBottom: 8 }}><span className="sec-title">Top Ranked Ideas</span><span className="badge badge-accent">W26</span></div>
-          {ideas.slice(0, 5).map((idea, i) => (
-            <div key={idea.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: i < 4 ? '1px solid var(--border)' : 'none' }}>
-              <span className="mono" style={{ fontSize: 10, color: 'var(--text4)', width: 16 }}>#{i + 1}</span>
-              <span className="badge badge-dim mono" style={{ fontSize: 10, minWidth: 44 }}>{idea.ticker}</span>
-              <DirBadge dir={idea.dir} />
-              <div style={{ flex: 1 }}><Bar val={idea.finalScore} color={i === 0 ? 'var(--purple)' : i < 3 ? 'var(--accent)' : 'var(--long)'} /></div>
-              <span className="mono" style={{ fontSize: 10, color: 'var(--accent)', width: 28, textAlign: 'right' }}>{idea.finalScore.toFixed(0)}</span>
-            </div>
-          ))}
+          {ideas.slice(0, 5).map((idea, i) => {
+            const qs = idea.quantScore;
+            const qColor = qs >= 80 ? 'var(--long)' : qs >= 70 ? 'var(--accent)' : qs >= 60 ? 'var(--warn)' : qs > 0 ? 'var(--short)' : 'var(--text4)';
+            return (
+              <div key={idea.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0', borderBottom: i < 4 ? '1px solid var(--border)' : 'none' }}>
+                <span className="mono" style={{ fontSize: 10, color: 'var(--text4)', width: 16 }}>#{i + 1}</span>
+                <span className="badge badge-dim mono" style={{ fontSize: 10, minWidth: 44 }}>{idea.ticker}</span>
+                <DirBadge dir={idea.dir} />
+                <div style={{ flex: 1 }}><Bar val={idea.finalScore} color={i === 0 ? 'var(--purple)' : i < 3 ? 'var(--accent)' : 'var(--long)'} /></div>
+                <span className="mono" style={{ fontSize: 10, color: 'var(--accent)', width: 28, textAlign: 'right' }}>{idea.finalScore.toFixed(0)}</span>
+                {qs > 0 && (
+                  <span className="mono" style={{ fontSize: 9, color: qColor, width: 22, textAlign: 'right' }}>Q{qs.toFixed(0)}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
 
         <div className="panel" style={{ padding: 12 }}>
@@ -91,22 +98,51 @@ export default function DashboardPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
         <div className="panel" style={{ padding: 12 }}>
-          <div className="sec-hdr" style={{ marginBottom: 8 }}><span className="sec-title">Ideas · Capital Flow</span><span className="badge badge-low pulse">LIVE</span></div>
+          <div className="sec-hdr" style={{ marginBottom: 8 }}>
+            <span className="sec-title">Ideas · Capital + Quant</span>
+            <span className="badge badge-low pulse">LIVE</span>
+          </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 4 }}>
             {ideas.map(idea => {
               const maxCredits = Math.max(...ideas.map(i => i.totalCredits), 1);
               const pct = (idea.totalCredits / maxCredits) * 100;
+              const qs = idea.quantScore;
+              const qColor = qs >= 80 ? 'var(--long)' : qs >= 70 ? 'var(--accent)' : qs >= 60 ? 'var(--warn)' : qs > 0 ? 'var(--short)' : 'var(--border2)';
+              const ms = idea.marketSnapshot;
+              const pnlUp = (ms?.currentPnlPct ?? 0) >= 0;
               return (
                 <div key={idea.id} style={{ textAlign: 'center' }}>
-                  <div style={{ height: 60, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: 3 }}>
-                    <div style={{ width: '70%', background: idea.dir === 'LONG' ? 'var(--long)' : 'var(--short)', opacity: .7, borderRadius: '1px 1px 0 0', height: `${Math.max(pct, 2)}%`, transition: 'height .5s' }} />
+                  <div style={{ height: 52, display: 'flex', alignItems: 'flex-end', justifyContent: 'center', marginBottom: 3 }}>
+                    <div style={{ width: '60%', background: idea.dir === 'LONG' ? 'var(--long)' : 'var(--short)', opacity: .6, borderRadius: '1px 1px 0 0', height: `${Math.max(pct, 2)}%`, transition: 'height .5s' }} />
                   </div>
                   <div className="mono" style={{ fontSize: 9, color: 'var(--text2)', fontWeight: 600 }}>{idea.ticker}</div>
-                  <div style={{ fontSize: 8, color: 'var(--text4)' }}>{idea.totalCredits.toLocaleString()}</div>
+                  {qs > 0 && (
+                    <div style={{ fontSize: 8, color: qColor, fontFamily: 'var(--mono)', fontWeight: 700 }}>{qs.toFixed(0)}</div>
+                  )}
+                  {ms?.currentPnlPct != null && (
+                    <div style={{ fontSize: 7, color: pnlUp ? 'var(--long)' : 'var(--short)', fontFamily: 'var(--mono)' }}>
+                      {pnlUp ? '+' : ''}{ms.currentPnlPct.toFixed(1)}%
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
+          {ideas.some(i => i.quantScore > 0) && (
+            <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--border)', display: 'flex', gap: 12, justifyContent: 'center' }}>
+              {[['≥80 Strong', 'var(--long)', ideas.filter(i => i.quantScore >= 80).length],
+                ['70–79 Good', 'var(--accent)', ideas.filter(i => i.quantScore >= 70 && i.quantScore < 80).length],
+                ['60–69 Neutral', 'var(--warn)', ideas.filter(i => i.quantScore >= 60 && i.quantScore < 70).length],
+                ['<60 Weak', 'var(--short)', ideas.filter(i => i.quantScore > 0 && i.quantScore < 60).length],
+              ].map(([l, c, n]) => (
+                <div key={String(l)} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: String(c) }} />
+                  <span style={{ fontSize: 8, color: 'var(--text4)' }}>{l}</span>
+                  <span className="mono" style={{ fontSize: 9, fontWeight: 700, color: String(c) }}>{n}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="panel" style={{ padding: 12 }}>

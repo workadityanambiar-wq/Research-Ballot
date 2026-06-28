@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { DirBadge } from '@/components/ui/Badge';
 import { getPhase, ROUND_BUDGET, WEEK_ID } from '@/lib/data';
@@ -40,12 +40,92 @@ function fmtMs(ms: number) {
 
 // ── Idea card ─────────────────────────────────────────────────────────────────
 
-function IdeaCard({ idea, isOwn, inputVal, onInput, teamTotal, hasSubmitted, lockedAmt }: {
+function PnLBadge({ idea, livePrice }: { idea: Idea; livePrice: number | null }) {
+  const snap = idea.marketSnapshot;
+  if (!snap && !livePrice) return null;
+
+  const cmp       = snap?.cmp ?? idea.entry;
+  const current   = livePrice ?? snap?.currentPrice ?? null;
+  if (!current || !cmp) return null;
+
+  const dir       = idea.dir;
+  const pnlPct    = dir === 'LONG'
+    ? ((current - cmp) / cmp) * 100
+    : ((cmp - current) / cmp) * 100;
+  const up        = pnlPct >= 0;
+  const color     = up ? 'var(--long)' : 'var(--short)';
+
+  return (
+    <div style={{ display: 'flex', gap: 6, marginBottom: 8 }}>
+      <div style={{ flex: 1, padding: '5px 8px', background: 'var(--bg)', borderRadius: 4, border: `1px solid ${up ? 'rgba(22,163,74,.2)' : 'rgba(220,38,38,.2)'}` }}>
+        <div style={{ fontSize: 7, color: 'var(--text4)', marginBottom: 1 }}>SUBMISSION CMP</div>
+        <div className="mono" style={{ fontSize: 11, fontWeight: 700 }}>{cmp.toFixed(2)}</div>
+      </div>
+      <div style={{ flex: 1, padding: '5px 8px', background: 'var(--bg)', borderRadius: 4, border: `1px solid ${up ? 'rgba(22,163,74,.2)' : 'rgba(220,38,38,.2)'}` }}>
+        <div style={{ fontSize: 7, color: 'var(--text4)', marginBottom: 1 }}>LIVE PRICE</div>
+        <div className="mono" style={{ fontSize: 11, fontWeight: 700 }}>{current.toFixed(2)}</div>
+      </div>
+      <div style={{ flex: 1, padding: '5px 8px', background: up ? 'rgba(22,163,74,.06)' : 'rgba(220,38,38,.06)', borderRadius: 4, border: `1px solid ${up ? 'rgba(22,163,74,.25)' : 'rgba(220,38,38,.25)'}` }}>
+        <div style={{ fontSize: 7, color: 'var(--text4)', marginBottom: 1 }}>P&L</div>
+        <div className="mono" style={{ fontSize: 12, fontWeight: 700, color }}>{up ? '+' : ''}{pnlPct.toFixed(2)}%</div>
+      </div>
+    </div>
+  );
+}
+
+function SnapTooltip({ idea }: { idea: Idea }) {
+  const snap = idea.marketSnapshot;
+  if (!snap) return null;
+  const [show, setShow] = useState(false);
+  const subTime = new Date(snap.submittedAtUtc);
+  const msSince = Date.now() - subTime.getTime();
+  const hoursSince = Math.floor(msSince / 3600000);
+  const minsSince  = Math.floor((msSince % 3600000) / 60000);
+
+  return (
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <div
+        onMouseEnter={() => setShow(true)}
+        onMouseLeave={() => setShow(false)}
+        style={{ fontSize: 9, color: 'var(--text4)', cursor: 'default', borderBottom: '1px dashed var(--border2)', display: 'inline' }}
+      >
+        {hoursSince > 0 ? `${hoursSince}h ${minsSince}m ago` : `${minsSince}m ago`}
+      </div>
+      {show && (
+        <div style={{
+          position: 'absolute', bottom: '100%', left: 0, zIndex: 20,
+          background: 'var(--panel)', border: '1px solid var(--border)',
+          borderRadius: 6, padding: '10px 12px', minWidth: 200,
+          boxShadow: '0 4px 16px rgba(0,0,0,.3)',
+        }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: 'var(--text3)', marginBottom: 6 }}>MT5 SNAPSHOT</div>
+          {[
+            ['MT5 Server Time', new Date(snap.mt5ServerTime).toISOString().replace('T', ' ').slice(0, 19) + ' UTC'],
+            ['Exchange', snap.exchange],
+            ['Session', snap.marketSession],
+            ['Market', snap.marketStatus],
+            ['Bid', snap.bid.toFixed(2)],
+            ['Ask', snap.ask.toFixed(2)],
+            ['Spread', snap.spread.toFixed(2)],
+          ].map(([k, v]) => (
+            <div key={k} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
+              <span style={{ fontSize: 8, color: 'var(--text4)' }}>{k}</span>
+              <span className="mono" style={{ fontSize: 8, color: 'var(--text2)' }}>{v}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IdeaCard({ idea, isOwn, inputVal, onInput, teamTotal, hasSubmitted, lockedAmt, livePrice }: {
   idea: Idea; isOwn: boolean; inputVal: string; onInput: (v: string) => void;
-  teamTotal: number; hasSubmitted: boolean; lockedAmt: number;
+  teamTotal: number; hasSubmitted: boolean; lockedAmt: number; livePrice: number | null;
 }) {
   const staged = parseInt(inputVal || '0', 10) || 0;
   const active = staged > 0 || lockedAmt > 0;
+  const snap = idea.marketSnapshot;
 
   return (
     <div style={{
@@ -63,15 +143,47 @@ function IdeaCard({ idea, isOwn, inputVal, onInput, teamTotal, hasSubmitted, loc
         <div style={{ position: 'absolute', top: 11, right: 11, width: 7, height: 7, borderRadius: '50%', background: 'var(--accent)' }} />
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
         <span className="mono" style={{ fontSize: 9, color: 'var(--text4)', background: 'var(--bg)', padding: '1px 5px', borderRadius: 2, border: '1px solid var(--border)' }}>{idea.id}</span>
         <DirBadge dir={idea.dir} />
+        {snap && snap.tradeStatus !== 'OPEN' ? (
+          <span style={{
+            marginLeft: 'auto', fontSize: 8, fontWeight: 700, padding: '2px 7px', borderRadius: 3,
+            background: snap.tradeStatus === 'TARGET_HIT' ? 'rgba(22,163,74,.12)' : 'rgba(220,38,38,.1)',
+            color: snap.tradeStatus === 'TARGET_HIT' ? 'var(--long)' : 'var(--short)',
+            border: `1px solid ${snap.tradeStatus === 'TARGET_HIT' ? 'rgba(22,163,74,.3)' : 'rgba(220,38,38,.2)'}`,
+          }}>
+            {snap.tradeStatus.replace('_', ' ')}
+          </span>
+        ) : snap ? (
+          <span style={{ marginLeft: 'auto', fontSize: 8, color: snap.marketStatus === 'OPEN' ? 'var(--long)' : 'var(--short)', fontWeight: 600 }}>
+            ● {snap.marketStatus}
+          </span>
+        ) : null}
       </div>
 
-      <div className="mono" style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>{idea.ticker}</div>
+      <div className="mono" style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{idea.ticker}</div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5, marginBottom: 8 }}>
-        {([['EXP RET', `+${idea.expRet}%`, 'var(--long)'], ['R/R', `${idea.rr}x`, idea.rr >= 2 ? 'var(--long)' : 'var(--warn)'], ['CONV', `${idea.conv}/10`, 'var(--accent)']] as [string, string, string][]).map(([lbl, val, clr]) => (
+      {/* Submission timestamp with hover tooltip */}
+      {snap && (
+        <div style={{ marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span style={{ fontSize: 8, color: 'var(--text4)' }}>Submitted</span>
+          <SnapTooltip idea={idea} />
+          <span style={{ fontSize: 8, color: 'var(--text4)' }}>at {snap.cmp.toFixed(2)}</span>
+        </div>
+      )}
+
+      {/* Live P&L vs submission price */}
+      <PnLBadge idea={idea} livePrice={livePrice} />
+
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5, marginBottom: 8 }}>
+        {([
+          ['EXP RET', `+${idea.expRet}%`, 'var(--long)'],
+          ['R/R', `${idea.rr.toFixed(1)}x`, idea.rr >= 2 ? 'var(--long)' : 'var(--warn)'],
+          ['CONV', `${idea.conv}/10`, 'var(--accent)'],
+          ['QUANT', idea.quantScore > 0 ? idea.quantScore.toFixed(0) : '—',
+            idea.quantScore >= 80 ? 'var(--long)' : idea.quantScore >= 70 ? 'var(--accent)' : idea.quantScore >= 60 ? 'var(--warn)' : idea.quantScore > 0 ? 'var(--short)' : 'var(--text4)'],
+        ] as [string, string, string][]).map(([lbl, val, clr]) => (
           <div key={lbl} style={{ background: 'var(--bg)', borderRadius: 4, padding: '4px 6px' }}>
             <div style={{ fontSize: 8, color: 'var(--text4)', marginBottom: 2 }}>{lbl}</div>
             <div className="mono" style={{ fontSize: 11, fontWeight: 700, color: clr }}>{val}</div>
@@ -176,15 +288,61 @@ function ResultsTable({ ideas, allocations, round, users }: { ideas: Idea[]; all
 
 export default function BallotPage() {
   const { user, ideas, allocations, users, submitRound } = useApp();
-  const [phase, setPhase] = useState<Phase>(getPhase);
+  const [phase, setPhase]       = useState<Phase>(getPhase);
   const [inputVals, setInputVals] = useState<Record<string, string>>({});
-  const [now, setNow] = useState(Date.now);
-  const [locking, setLocking] = useState(false);
+  const [now, setNow]           = useState(Date.now);
+  const [locking, setLocking]   = useState(false);
+  const [livePrices, setLivePrices] = useState<Record<string, number>>({});
 
   useEffect(() => {
     const id = setInterval(() => { setNow(Date.now()); setPhase(getPhase()); }, 1000);
     return () => clearInterval(id);
   }, []);
+
+  // Refresh live prices: snapshot endpoint (updates DB + returns MT5 prices), then Yahoo fallback
+  const fetchLivePrices = useCallback(async () => {
+    const tickers = [...new Set(ideas.map(i => i.ticker))];
+    if (tickers.length === 0) return;
+    const results: Record<string, number> = {};
+
+    // Primary: refresh endpoint persists P&L + returns current prices from MT5
+    try {
+      const refreshRes = await fetch('/api/snapshots/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ weekId: WEEK_ID }),
+        cache: 'no-store',
+      });
+      if (refreshRes.ok) {
+        const { prices } = await refreshRes.json() as { updated: number; prices: Record<string, number> };
+        Object.assign(results, prices);
+      }
+    } catch { /* fall through */ }
+
+    // Yahoo Finance fallback for any ticker not covered by the refresh
+    const missing = tickers.filter(t => !(t in results));
+    await Promise.allSettled(
+      missing.map(async ticker => {
+        try {
+          const yfUrl = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?interval=1m&range=1d`;
+          const yfRes = await fetch(yfUrl, { headers: { 'User-Agent': 'Mozilla/5.0' }, cache: 'no-store' });
+          if (yfRes.ok) {
+            const json = await yfRes.json();
+            const price: number | undefined = json?.chart?.result?.[0]?.meta?.regularMarketPrice;
+            if (price) results[ticker] = price;
+          }
+        } catch { /* no price */ }
+      }),
+    );
+
+    setLivePrices(prev => ({ ...prev, ...results }));
+  }, [ideas]);
+
+  useEffect(() => {
+    fetchLivePrices();
+    const id = setInterval(fetchLivePrices, 30000);
+    return () => clearInterval(id);
+  }, [fetchLivePrices]);
 
   if (!user) return null;
 
@@ -219,7 +377,7 @@ export default function BallotPage() {
 
   const lockBallot = async () => {
     const entries = Object.entries(inputVals).filter(([, v]) => (parseInt(v || '0', 10) || 0) > 0);
-    if (entries.length === 0 || remaining < 0 || locking) return;
+    if (entries.length === 0 || remaining !== 0 || locking) return;
     setLocking(true);
     try {
       await submitRound(
@@ -317,7 +475,7 @@ export default function BallotPage() {
           <div style={{ marginBottom: 12, fontSize: 10, color: 'var(--text3)' }}>
             {hasSubmitted
               ? `Round ${currentRound} ballot locked · Showing live team allocations`
-              : `Allocate your $${fmt(ROUND_BUDGET)} across ideas · Cannot allocate to your own ideas · Partial allocation allowed`}
+              : `Allocate exactly $${fmt(ROUND_BUDGET)} across ideas · Cannot allocate to your own ideas`}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
             {ideas.map(idea => (
@@ -330,6 +488,7 @@ export default function BallotPage() {
                 teamTotal={teamTotal(idea)}
                 hasSubmitted={hasSubmitted}
                 lockedAmt={myAllocs.find(a => a.ideaId === idea.id)?.amount ?? 0}
+                livePrice={livePrices[idea.ticker] ?? null}
               />
             ))}
           </div>
@@ -396,16 +555,21 @@ export default function BallotPage() {
                   Over budget by ${fmt(Math.abs(remaining))} — reduce allocations
                 </div>
               )}
+              {remaining > 0 && stagedTotal > 0 && (
+                <div style={{ fontSize: 9, color: 'var(--warn)', background: 'rgba(234,179,8,.07)', padding: '5px 8px', borderRadius: 4, marginBottom: 8, border: '1px solid rgba(234,179,8,.2)' }}>
+                  ${fmt(remaining)} unallocated — must deploy exactly ${fmt(ROUND_BUDGET)}
+                </div>
+              )}
               <button
                 className="btn btn-primary"
                 style={{ width: '100%', justifyContent: 'center', padding: 10, opacity: stagedTotal === 0 || remaining < 0 || locking ? 0.4 : 1 }}
-                disabled={stagedTotal === 0 || remaining < 0 || locking}
+                disabled={remaining !== 0 || locking}
                 onClick={lockBallot}
               >
                 {locking ? 'LOCKING…' : `LOCK ROUND ${currentRound} BALLOT →`}
               </button>
               <div style={{ fontSize: 9, color: 'var(--text4)', textAlign: 'center', marginTop: 6 }}>
-                Immutable after submission · Partial allocation OK
+                Immutable after submission · Must deploy exactly ${fmt(ROUND_BUDGET)}
               </div>
             </>
           ) : (

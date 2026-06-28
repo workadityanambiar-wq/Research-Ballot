@@ -203,6 +203,8 @@ enum AuditAction {
   ALLOCATION_QUEUE_UPDATED
   RESEARCH_REVISION_SUBMITTED
   DECISION_PACKAGE_GENERATED
+  MT5_SNAPSHOT_CREATED
+  MT5_SERVICE_UNAVAILABLE
 }
 
 enum RiskLevel {
@@ -477,6 +479,8 @@ model Idea {
   voteJustifications VoteJustification[]
   allocationQueue    AllocationQueueEntry?
   decisionPackages   DecisionPackage[]
+  marketSnapshot     IdeaMarketSnapshot?
+  quantScoreData     IdeaQuantScore?
 
   @@index([weekId])
   @@index([authorId])
@@ -863,6 +867,144 @@ model DecisionPackage {
   generatedBy String
   content     String   @db.Text
   createdAt   DateTime @default(now())
+
+  @@index([ideaId])
+}
+
+// ──────────────────────────────────────────────
+// MT5 Market Snapshot — immutable audit record
+// Fields: cmp, bid, ask, spread, mt5ServerTime,
+//         submittedAtUtc, submissionIp are NEVER
+//         editable after creation.
+// ──────────────────────────────────────────────
+
+model IdeaMarketSnapshot {
+  id                 String   @id @default(cuid())
+  ideaId             String   @unique
+  idea               Idea     @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+
+  // Analyst context (set at creation, immutable)
+  analystId          String
+  analystRole        String
+
+  // MT5 market data at exact moment of submission (immutable)
+  symbol             String
+  cmp                Float             // mid price — becomes the idea entry price
+  bid                Float
+  ask                Float
+  spread             Float
+  mt5ServerTime      DateTime
+  marketStatus       String            // OPEN | CLOSED | SHORT_ONLY | LONG_ONLY
+  exchange           String            @default("MT5")
+  timeZone           String            @default("UTC")
+
+  // Idea parameters snapshot (immutable)
+  direction          String
+  targetPrice        Float
+  stopPrice          Float
+  timeHorizon        String
+  weekId             String
+  weekNumber         Int
+  votingCycle        String
+
+  // Submission audit metadata (immutable)
+  submittedAtUtc     DateTime          @default(now())
+  tradingDay         String
+  marketSession      String            @default("UNKNOWN")
+  submissionIp       String?
+  submissionDevice   String?
+  submissionBrowser  String?
+
+  // Live performance tracking (updated by background refresh — NOT part of immutable record)
+  currentPrice       Float?
+  currentPnlPct      Float?
+  currentPnlAbs      Float?
+  distanceToTarget   Float?
+  distanceToStop     Float?
+  mfe                Float?            // Maximum Favorable Excursion
+  mae                Float?            // Maximum Adverse Excursion
+  tradeStatus        String            @default("OPEN") // OPEN | TARGET_HIT | STOP_HIT | EXPIRED | CLOSED
+  lastPriceUpdate    DateTime?
+
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+
+  @@index([analystId])
+  @@index([weekId])
+  @@index([tradeStatus])
+}
+
+// ──────────────────────────────────────────────
+// MT5 Quantitative Score — computed at submission
+// from historical + live MT5 data.
+// quantScore on Idea is updated to match finalQuantScore.
+// ──────────────────────────────────────────────
+
+model IdeaQuantScore {
+  id        String   @id @default(cuid())
+  ideaId    String   @unique
+  idea      Idea     @relation(fields: [ideaId], references: [id], onDelete: Cascade)
+  direction String
+
+  // Raw MT5 indicators
+  ema20          Float
+  ema50          Float
+  ema100         Float
+  ema200         Float
+  rsi14          Float
+  macdLine       Float
+  macdSignal     Float
+  macdHist       Float
+  atr14          Float
+  atrPct         Float
+  histVol        Float   @default(0)
+  adx14          Float
+  diPlus         Float
+  diMinus        Float
+  high52w        Float
+  low52w         Float
+  nearestSupport    Float?
+  nearestResistance Float?
+  distToSupport     Float?
+  distToResistance  Float?
+  avgVolume20    Float?
+  relVolume      Float?
+  currentRange   Float   @default(0)
+  avgRange       Float   @default(0)
+
+  // MA alignment flags
+  priceAboveEma20   Boolean @default(false)
+  priceAboveEma50   Boolean @default(false)
+  priceAboveEma100  Boolean @default(false)
+  priceAboveEma200  Boolean @default(false)
+  ema20AboveEma50   Boolean @default(false)
+  ema50AboveEma100  Boolean @default(false)
+  ema100AboveEma200 Boolean @default(false)
+
+  // Component scores (0–10 each)
+  trendScore        Float
+  momentumScore     Float
+  volatilityScore   Float
+  trendQualityScore Float
+  maAlignmentScore  Float
+  srScore           Float
+  breakoutScore     Float
+  volumeScore       Float
+
+  // Labels
+  trendLabel         String
+  momentumLabel      String
+  volatilityLabel    String
+  trendQualityLabel  String
+  quantLabel         String
+
+  // Final weighted score 0–100
+  finalQuantScore Float
+  calculatedAt    DateTime @default(now())
+  timeframe       String   @default("H1")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([ideaId])
 }
