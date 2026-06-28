@@ -5,11 +5,13 @@ import { DirBadge } from '@/components/ui/Badge';
 import { Bar } from '@/components/ui/Bar';
 import TickerSearch from '@/components/ui/TickerSearch';
 import { WEEK_ID, IDEA_LIMIT_PER_WEEK } from '@/lib/data';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import type { Mt5Quote, Mt5QuantData } from '@/lib/types';
 
 // ── MT5 price panel ───────────────────────────────────────────────────────────
 
 function Mt5PricePanel({ quote, loading, error }: { quote: Mt5Quote | null; loading: boolean; error: string | null }) {
+  const { isMobile } = useBreakpoint();
   const statusColor = (s: string) =>
     s === 'OPEN' ? 'var(--long)' : s === 'CLOSED' ? 'var(--short)' : 'var(--warn)';
 
@@ -61,8 +63,8 @@ function Mt5PricePanel({ quote, loading, error }: { quote: Mt5Quote | null; load
 
       {quote && (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
-            <div style={{ background: 'var(--bg)', borderRadius: 4, padding: '8px 10px', border: '1px solid rgba(22,163,74,.15)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 8, marginBottom: 10 }}>
+            <div style={{ background: 'var(--bg)', borderRadius: 4, padding: '8px 10px', border: '1px solid rgba(22,163,74,.15)', gridColumn: isMobile ? '1 / -1' : undefined }}>
               <div style={{ fontSize: 8, color: 'var(--text4)', marginBottom: 3 }}>CURRENT MARKET PRICE</div>
               <div className="mono" style={{ fontSize: 18, fontWeight: 700, color: 'var(--long)' }}>
                 {quote.mid.toFixed(quote.digits)}
@@ -321,6 +323,8 @@ export default function SubmitPage() {
     }
   };
 
+  const { isMobile } = useBreakpoint();
+
   if (done) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <div className="panel slide-up" style={{ padding: 32, maxWidth: 400, textAlign: 'center' }}>
@@ -350,17 +354,17 @@ export default function SubmitPage() {
   );
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: 16 }}>
-      <div className="sec-hdr" style={{ marginBottom: 16 }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: isMobile ? 12 : 16 }}>
+      <div className="sec-hdr-resp" style={{ marginBottom: 14 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Submit Trade Idea</div>
-          <div style={{ fontSize: 10, color: 'var(--text3)' }}>
+          <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 700, marginBottom: 2 }}>Submit Trade Idea</div>
+          {!isMobile && <div style={{ fontSize: 10, color: 'var(--text3)' }}>
             Entry price captured automatically from MT5 · No manual entry · Audit logged
-          </div>
+          </div>}
         </div>
-        <div className="panel" style={{ padding: '6px 12px', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span style={{ fontSize: 10, color: 'var(--text3)' }}>WEEKLY LIMIT</span>
-          <span className="mono" style={{ fontSize: 14, fontWeight: 700, color: wkCount < IDEA_LIMIT_PER_WEEK ? 'var(--accent)' : 'var(--short)' }}>
+        <div className="panel" style={{ padding: '6px 10px', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+          <span style={{ fontSize: 10, color: 'var(--text3)' }}>{isMobile ? 'IDEAS' : 'WEEKLY LIMIT'}</span>
+          <span className="mono" style={{ fontSize: 13, fontWeight: 700, color: wkCount < IDEA_LIMIT_PER_WEEK ? 'var(--accent)' : 'var(--short)' }}>
             {wkCount}/{IDEA_LIMIT_PER_WEEK}
           </span>
           <span className={`badge ${wkCount < IDEA_LIMIT_PER_WEEK ? 'badge-low' : 'badge-high'}`}>
@@ -369,13 +373,13 @@ export default function SubmitPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: 14 }}>
         <div>
           {/* Ticker + direction + MT5 price */}
           <div className="panel" style={{ padding: 14, marginBottom: 12 }}>
             <div className="sec-title" style={{ marginBottom: 12 }}>INSTRUMENT</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
-              <div>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 10, marginBottom: 14 }}>
+              <div style={isMobile ? { gridColumn: '1 / -1' } : {}}>
                 <div className="form-label">TICKER *</div>
                 <TickerSearch value={f.ticker} onSelect={handleTickerSelect} placeholder="Search ticker…" />
               </div>
@@ -406,7 +410,7 @@ export default function SubmitPage() {
           {/* Trade parameters */}
           <div className="panel" style={{ padding: 14, marginBottom: 12 }}>
             <div className="sec-title" style={{ marginBottom: 12 }}>TRADE PARAMETERS</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'repeat(2,1fr)' : 'repeat(4,1fr)', gap: 10 }}>
               <div>
                 <div className="form-label">ENTRY PRICE (MT5)</div>
                 <div className="inp mono" style={{

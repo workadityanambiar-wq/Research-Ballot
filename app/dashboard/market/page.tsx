@@ -1,6 +1,7 @@
 'use client';
 import { useState, useMemo } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { can } from '@/lib/permissions';
 import type { Idea } from '@/lib/types';
 
@@ -384,6 +385,7 @@ const FILTERS = [
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function MarketPage() {
   const { user, ideas, votes, setVotes } = useApp();
+  const { isMobile } = useBreakpoint();
 
   const [myVotes, setMyVotes] = useState<Record<string, number>>(() => {
     const mv: Record<string, number> = {};
@@ -432,11 +434,11 @@ export default function MarketPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
+    <div className="dash-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
 
       {/* Toolbar */}
       <div style={{
-        display: 'flex', alignItems: 'center', gap: 7, padding: '9px 20px',
+        display: 'flex', alignItems: 'center', gap: 7, padding: isMobile ? '8px 12px' : '9px 20px',
         borderBottom: '1px solid var(--border)', background: 'var(--panel)',
         flexShrink: 0, overflowX: 'auto',
       }}>
@@ -444,7 +446,7 @@ export default function MarketPage() {
           style={{
             background: 'var(--bg)', border: '1px solid var(--border2)', color: 'var(--text)',
             padding: '5px 12px', borderRadius: 6, fontSize: 11, fontFamily: 'var(--sans)',
-            width: 210, outline: 'none', transition: 'border-color .15s',
+            width: isMobile ? '100%' : 210, outline: 'none', transition: 'border-color .15s', flexShrink: isMobile ? 1 : 0,
           }}
           placeholder="Search ticker, thesis, sector…"
           value={search}

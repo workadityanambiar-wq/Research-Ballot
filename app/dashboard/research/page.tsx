@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import type { ResearchDoc } from '@/lib/types';
 
 type DocWithIdea = ResearchDoc & {
@@ -48,6 +49,7 @@ const TABS = ['ALL', 'DRAFT', 'IN_PROGRESS', 'COMPLETE', 'COMMITTEE_REVIEW', 'AR
 
 export default function ResearchPipeline() {
   const { user } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   const [docs, setDocs] = useState<DocWithIdea[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>('ALL');
@@ -82,12 +84,12 @@ export default function ResearchPipeline() {
   );
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', gap: 16 }}>
+    <div className="scroll-y dash-content" style={{ flex: 1, padding: isMobile ? 12 : 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+      <div className="sec-hdr-resp">
         <div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', letterSpacing: '-.01em' }}>Research Pipeline</h1>
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3 }}>Century Financial · Investment Research OS</p>
+          <h1 style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: 'var(--text)', letterSpacing: '-.01em', margin: 0 }}>Research Pipeline</h1>
+          {!isMobile && <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 3, marginBottom: 0 }}>Century Financial · Investment Research OS</p>}
         </div>
         <Link href="/dashboard/submit">
           <button className="btn btn-primary btn-sm">+ SUBMIT IDEA</button>
@@ -95,7 +97,7 @@ export default function ResearchPipeline() {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(5, 3, 2)}, 1fr)`, gap: 8 }}>
         {[
           { label: 'Total Research', val: stats.total, color: 'var(--text)' },
           { label: 'In Progress', val: stats.inProgress, color: 'var(--accent)' },
@@ -142,7 +144,7 @@ export default function ResearchPipeline() {
           <div style={{ fontSize: 12, marginTop: 4 }}>Submit an idea to create a research workspace</div>
         </div>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 1)}, 1fr)`, gap: 10 }}>
           {filtered.map(doc => (
             <Link key={doc.id} href={`/dashboard/research/${doc.ideaId}`} style={{ textDecoration: 'none' }}>
               <div className="idea-card" style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>

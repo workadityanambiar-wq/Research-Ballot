@@ -52,7 +52,14 @@ for (const entry of NAV) {
   else if (currentSection) SECTION_ITEMS[currentSection].push(entry.href);
 }
 
-export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: () => void }) {
+interface SidebarProps {
+  user: AuthUser;
+  onLogout: () => void;
+  mobileOpen?: boolean;
+  onMobileClose?: () => void;
+}
+
+export default function Sidebar({ user, onLogout, mobileOpen = false, onMobileClose }: SidebarProps) {
   const pathname = usePathname();
   const isCio = user.role === 'CIO';
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2);
@@ -69,7 +76,6 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
     if (storedCollapsed) {
       try { setCollapsed(JSON.parse(storedCollapsed)); } catch { /* ignore */ }
     } else {
-      // Initialize from defaultOpen
       const init: Record<string, boolean> = {};
       for (const entry of NAV) {
         if ('section' in entry) init[entry.key] = !(entry.defaultOpen ?? true);
@@ -77,6 +83,19 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
       setCollapsed(init);
     }
   }, []);
+
+  // Close drawer on route change (mobile)
+  useEffect(() => { onMobileClose?.(); }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [mobileOpen]);
 
   const toggleTheme = () => {
     const next = theme === 'dark' ? 'light' : 'dark';
@@ -93,7 +112,6 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
     });
   };
 
-  // Auto-expand the section containing the active route
   useEffect(() => {
     for (const [key, hrefs] of Object.entries(SECTION_ITEMS)) {
       if (hrefs.some(h => pathname === h || (h !== '/dashboard' && pathname.startsWith(h + '/')))) {
@@ -108,10 +126,13 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
     }
   }, [pathname]);
 
-  return (
-    <div style={{ width: 192, minWidth: 192, height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--panel)', borderRight: '1px solid var(--border)', flexShrink: 0 }}>
+  const sidebarContent = (
+    <div style={{
+      width: 192, height: '100%', display: 'flex', flexDirection: 'column',
+      background: 'var(--panel)', borderRight: '1px solid var(--border)',
+    }}>
       {/* Logo */}
-      <div style={{ padding: '13px 14px 11px', borderBottom: '1px solid var(--border)' }}>
+      <div style={{ padding: '13px 14px 11px', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <svg width="26" height="22" viewBox="0 0 28 24" fill="none" style={{ flexShrink: 0 }}>
             <rect x="1" y="1" width="15" height="15" stroke="#E8A000" strokeWidth="2"/>
@@ -121,21 +142,29 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
             <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text)', letterSpacing: '.07em' }}>CENTURY</div>
             <div style={{ fontSize: 8, fontWeight: 600, color: 'var(--text4)', letterSpacing: '.1em', marginTop: 2 }}>FINANCIAL</div>
           </div>
-          <button onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text4)', fontSize: 12, padding: '2px 3px', borderRadius: 3, lineHeight: 1 }}>
-            {theme === 'dark' ? '☀' : '☾'}
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button onClick={toggleTheme} title={theme === 'dark' ? 'Light mode' : 'Dark mode'}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text4)', fontSize: 12, padding: '4px', borderRadius: 4, lineHeight: 1, minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              {theme === 'dark' ? '☀' : '☾'}
+            </button>
+            {onMobileClose && (
+              <button onClick={onMobileClose}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text4)', fontSize: 16, padding: '4px', borderRadius: 4, lineHeight: 1, minWidth: 28, minHeight: 28, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                ✕
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
       {/* User card */}
-      <div style={{ padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+      <div style={{ padding: '9px 12px', borderBottom: '1px solid var(--border)', background: 'var(--bg)', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 28, height: 28, borderRadius: 7, background: 'var(--accent-dim)', border: '1px solid rgba(37,99,235,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
+          <div style={{ width: 32, height: 32, borderRadius: 8, background: 'var(--accent-dim)', border: '1px solid rgba(37,99,235,.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700, color: 'var(--accent)', flexShrink: 0 }}>
             {initials}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 10, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{user.name}</div>
+            <div style={{ fontSize: 11, fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: 'var(--text)' }}>{user.name}</div>
             <div style={{ fontSize: 9, color: 'var(--text4)', marginTop: 1 }}>{user.role} · {user.title.split(' ')[0]}</div>
           </div>
           <TierBadge tier={user.tier} />
@@ -154,7 +183,7 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
                   width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                   padding: '8px 8px 4px', background: 'none', border: 'none', cursor: 'pointer',
                   color: 'var(--text4)', fontSize: 9, fontWeight: 700, letterSpacing: '.1em',
-                  marginTop: i > 0 ? 4 : 0,
+                  marginTop: i > 0 ? 4 : 0, minHeight: 32,
                 }}>
                 <span>{entry.section}</span>
                 <span style={{ fontSize: 8, opacity: 0.6, transform: isCollapsed ? 'rotate(-90deg)' : 'none', transition: 'transform .15s' }}>▾</span>
@@ -164,7 +193,6 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
 
           if (entry.cioOnly && !isCio) return null;
 
-          // Find parent section
           let parentKey = '';
           for (let j = i - 1; j >= 0; j--) {
             const prev = NAV[j];
@@ -176,8 +204,8 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
 
           return (
             <Link key={entry.id} href={entry.href} style={{ textDecoration: 'none', display: 'block' }}>
-              <div className={`nav-item ${active ? 'active' : ''}`} style={{ marginBottom: 1 }}>
-                <span style={{ fontSize: 10, width: 14, textAlign: 'center', opacity: .65, flexShrink: 0 }}>{entry.icon}</span>
+              <div className={`nav-item ${active ? 'active' : ''}`} style={{ marginBottom: 1, minHeight: 36 }}>
+                <span style={{ fontSize: 11, width: 16, textAlign: 'center', opacity: .65, flexShrink: 0 }}>{entry.icon}</span>
                 <span style={{ fontSize: 11 }}>{entry.label}</span>
               </div>
             </Link>
@@ -187,12 +215,12 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
       </div>
 
       {/* Footer */}
-      <div style={{ padding: '10px 8px', borderTop: '1px solid var(--border)' }}>
+      <div style={{ padding: '10px 8px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
         <div style={{ fontSize: 9, color: 'var(--text4)', marginBottom: 6, paddingLeft: 4, fontFamily: 'var(--mono)' }}>
           {user.legacyId}{user.mfaEnabled ? ' · MFA ✓' : ''}
         </div>
         <Link href="/dashboard/change-password" style={{ textDecoration: 'none', display: 'block', marginBottom: 5 }}>
-          <div className={`nav-item ${pathname === '/dashboard/change-password' ? 'active' : ''}`} style={{ padding: '4px 8px', fontSize: 10 }}>
+          <div className={`nav-item ${pathname === '/dashboard/change-password' ? 'active' : ''}`} style={{ padding: '4px 8px', fontSize: 10, minHeight: 32 }}>
             <span style={{ fontSize: 10, width: 14, textAlign: 'center', opacity: .65 }}>🔑</span>
             <span>Change Password</span>
           </div>
@@ -204,5 +232,20 @@ export default function Sidebar({ user, onLogout }: { user: AuthUser; onLogout: 
         </button>
       </div>
     </div>
+  );
+
+  return (
+    <>
+      {/* Desktop: static sidebar */}
+      <div className="hide-mobile" style={{ width: 192, minWidth: 192, height: '100%', flexShrink: 0 }}>
+        {sidebarContent}
+      </div>
+
+      {/* Mobile: overlay + drawer */}
+      <div className={`sidebar-overlay ${mobileOpen ? 'open' : ''}`} onClick={onMobileClose} />
+      <div className={`drawer ${mobileOpen ? 'open' : ''}`}>
+        {sidebarContent}
+      </div>
+    </>
   );
 }

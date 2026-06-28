@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 type QueueEntry = {
   id: string; ideaId: string; rank: number | null; capitalRequested: number | null;
@@ -39,6 +40,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default function AllocationQueuePage() {
+  const { isMobile, cols } = useBreakpoint();
   const [entries, setEntries] = useState<QueueEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [approvedIdeas, setApprovedIdeas] = useState<{ id: string; ticker: string; dir: string; finalScore: number | null }[]>([]);
@@ -104,7 +106,7 @@ export default function AllocationQueuePage() {
     : 0;
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: '18px 20px', background: 'var(--bg)' }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: isMobile ? 12 : '18px 20px', background: 'var(--bg)' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 16 }}>
@@ -125,7 +127,7 @@ export default function AllocationQueuePage() {
       </div>
 
       {/* KPI bar */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8, marginBottom: 14 }}>
         {[
           { label: 'Capital Waiting', value: `$${(totalCapital / 1000).toFixed(0)}K`, color: 'var(--accent)', icon: '◈', sub: `${entries.length} trade${entries.length !== 1 ? 's' : ''}` },
           { label: 'Pending Execution', value: pendingCount, color: 'var(--warn)', icon: '◷', sub: 'awaiting deployment' },

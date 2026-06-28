@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { DirBadge } from '@/components/ui/Badge';
 import { getPhase, ROUND_BUDGET, WEEK_ID } from '@/lib/data';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import type { Allocation, Phase, Idea, User } from '@/lib/types';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -344,6 +345,8 @@ export default function BallotPage() {
     return () => clearInterval(id);
   }, [fetchLivePrices]);
 
+  const { isMobile, isTablet } = useBreakpoint();
+
   if (!user) return null;
 
   const legacyId = user.legacyId;
@@ -398,12 +401,12 @@ export default function BallotPage() {
 
   // ── Phase banner ──────────────────────────────────────────────────────────────
   const banner = (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 20px', background: 'var(--panel)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        <span className="dot" style={{ background: cfg.color, width: 8, height: 8 }} />
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: isMobile ? '8px 12px' : '10px 20px', background: 'var(--panel)', borderBottom: '1px solid var(--border)', flexShrink: 0, flexWrap: 'wrap', gap: 6 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <span className="dot" style={{ background: cfg.color, width: 8, height: 8, flexShrink: 0 }} />
         <div>
-          <div style={{ fontSize: 12, fontWeight: 700, color: cfg.color, letterSpacing: '.05em' }}>{cfg.label}</div>
-          <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{cfg.sub} · {WEEK_ID}</div>
+          <div style={{ fontSize: isMobile ? 11 : 12, fontWeight: 700, color: cfg.color, letterSpacing: '.05em' }}>{cfg.label}</div>
+          {!isMobile && <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 1 }}>{cfg.sub} · {WEEK_ID}</div>}
         </div>
         {cfg.isOpen && (
           <div className="mono" style={{ fontSize: 11, color: 'var(--text2)', background: 'var(--bg)', padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border2)' }}>
@@ -411,14 +414,14 @@ export default function BallotPage() {
           </div>
         )}
       </div>
-      <div style={{ display: 'flex', gap: 24 }}>
+      <div style={{ display: 'flex', gap: isMobile ? 12 : 24 }}>
         <div style={{ textAlign: 'right' }}>
-          <div className="mono" style={{ fontSize: 13, fontWeight: 700 }}>{participants}/{totalMembers}</div>
-          <div style={{ fontSize: 9, color: 'var(--text4)' }}>analysts allocated</div>
+          <div className="mono" style={{ fontSize: isMobile ? 11 : 13, fontWeight: 700 }}>{participants}/{totalMembers}</div>
+          <div style={{ fontSize: 9, color: 'var(--text4)' }}>{isMobile ? 'analysts' : 'analysts allocated'}</div>
         </div>
         <div style={{ textAlign: 'right' }}>
-          <div className="mono" style={{ fontSize: 13, fontWeight: 700 }}>${fmt(totalAlloc)}</div>
-          <div style={{ fontSize: 9, color: 'var(--text4)' }}>capital deployed</div>
+          <div className="mono" style={{ fontSize: isMobile ? 11 : 13, fontWeight: 700 }}>${fmt(totalAlloc)}</div>
+          <div style={{ fontSize: 9, color: 'var(--text4)' }}>{isMobile ? 'deployed' : 'capital deployed'}</div>
         </div>
       </div>
     </div>
@@ -429,7 +432,7 @@ export default function BallotPage() {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
         {banner}
-        <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
+        <div className="scroll-y" style={{ flex: 1, padding: isMobile ? 12 : 20 }}>
           {phase === 'round1_closed' && (
             <div style={{ marginBottom: 16, padding: '9px 14px', background: 'rgba(37,99,235,.05)', border: '1px solid rgba(37,99,235,.15)', borderRadius: 6, fontSize: 10, color: 'var(--text2)' }}>
               Round 1 closed · Attribution now visible · Round 2 opens Wednesday 9:00 AM IST with a fresh $5,000 budget
@@ -469,15 +472,50 @@ export default function BallotPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 264px', flex: 1, overflow: 'hidden' }}>
+      {/* Mobile: compact budget strip */}
+      {isMobile && (
+        hasSubmitted ? (
+          <div style={{ padding: '8px 12px', background: 'var(--long-dim)', borderBottom: '1px solid rgba(22,163,74,.2)', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ color: 'var(--long)', fontSize: 14 }}>✓</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--long)' }}>Round {currentRound} Locked</span>
+            <span style={{ fontSize: 9, color: 'var(--text3)', marginLeft: 4 }}>${fmt(myAllocs.reduce((s, a) => s + a.amount, 0))} · {myAllocs.length} idea{myAllocs.length !== 1 ? 's' : ''}</span>
+          </div>
+        ) : (
+          <div style={{ padding: '8px 12px', background: 'var(--panel)', borderBottom: '1px solid var(--border)', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ flex: 1 }}>
+                <div className="bar-track">
+                  <div className="bar-fill" style={{ width: `${Math.min(100, (stagedTotal / ROUND_BUDGET) * 100)}%`, background: remaining < 0 ? 'var(--short)' : 'var(--accent)' }} />
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 3 }}>
+                  <span className="mono" style={{ fontSize: 9, color: 'var(--text4)' }}>${fmt(stagedTotal)} staged</span>
+                  <span className="mono" style={{ fontSize: 9, color: remaining < 0 ? 'var(--short)' : remaining === 0 ? 'var(--long)' : 'var(--warn)' }}>
+                    {remaining === 0 ? 'READY' : remaining > 0 ? `$${fmt(remaining)} left` : `$${fmt(Math.abs(remaining))} over`}
+                  </span>
+                </div>
+              </div>
+              <button
+                className="btn btn-primary btn-sm"
+                style={{ flexShrink: 0, fontSize: 10, opacity: remaining !== 0 || locking ? 0.4 : 1 }}
+                disabled={remaining !== 0 || locking}
+                onClick={lockBallot}
+              >
+                {locking ? '…' : 'LOCK →'}
+              </button>
+            </div>
+          </div>
+        )
+      )}
+
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 264px', flex: 1, overflow: 'hidden' }}>
         {/* Feed */}
-        <div className="scroll-y" style={{ padding: 16, borderRight: '1px solid var(--border)' }}>
-          <div style={{ marginBottom: 12, fontSize: 10, color: 'var(--text3)' }}>
+        <div className="scroll-y" style={{ padding: isMobile ? 12 : 16, borderRight: isMobile ? 'none' : '1px solid var(--border)' }}>
+          <div style={{ marginBottom: 10, fontSize: 10, color: 'var(--text3)' }}>
             {hasSubmitted
               ? `Round ${currentRound} ballot locked · Showing live team allocations`
               : `Allocate exactly $${fmt(ROUND_BUDGET)} across ideas · Cannot allocate to your own ideas`}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr' : '1fr 1fr', gap: isMobile ? 10 : 12 }}>
             {ideas.map(idea => (
               <IdeaCard
                 key={idea.id}
@@ -494,110 +532,112 @@ export default function BallotPage() {
           </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="scroll-y" style={{ padding: 16, background: 'var(--panel2)' }}>
-          <div className="sec-title" style={{ marginBottom: 10 }}>
-            {hasSubmitted ? `ROUND ${currentRound} LOCKED` : `ROUND ${currentRound} BUDGET`}
-          </div>
-          <div style={{ padding: '12px 14px', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 6, marginBottom: 14 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 9, color: 'var(--text4)' }}>BUDGET</span>
-              <span className="mono" style={{ fontSize: 11, fontWeight: 700 }}>${fmt(ROUND_BUDGET)}</span>
+        {/* Sidebar — desktop only */}
+        {!isMobile && (
+          <div className="scroll-y" style={{ padding: 16, background: 'var(--panel2)' }}>
+            <div className="sec-title" style={{ marginBottom: 10 }}>
+              {hasSubmitted ? `ROUND ${currentRound} LOCKED` : `ROUND ${currentRound} BUDGET`}
             </div>
-            {!hasSubmitted && (
+            <div style={{ padding: '12px 14px', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 6, marginBottom: 14 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 9, color: 'var(--text4)' }}>BUDGET</span>
+                <span className="mono" style={{ fontSize: 11, fontWeight: 700 }}>${fmt(ROUND_BUDGET)}</span>
+              </div>
+              {!hasSubmitted && (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text4)' }}>STAGED</span>
+                    <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: stagedTotal > 0 ? 'var(--accent)' : 'var(--text4)' }}>${fmt(stagedTotal)}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+                    <span style={{ fontSize: 9, color: 'var(--text4)' }}>REMAINING</span>
+                    <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: remaining < 0 ? 'var(--short)' : 'var(--long)' }}>${fmt(Math.max(0, remaining))}</span>
+                  </div>
+                  <div className="bar-track">
+                    <div className="bar-fill" style={{ width: `${Math.min(100, (stagedTotal / ROUND_BUDGET) * 100)}%`, background: remaining < 0 ? 'var(--short)' : 'var(--accent)' }} />
+                  </div>
+                </>
+              )}
+              {hasSubmitted && (
+                <div style={{ fontSize: 10, color: 'var(--long)', fontWeight: 600 }}>
+                  ${fmt(myAllocs.reduce((s, a) => s + a.amount, 0))} across {myAllocs.length} idea{myAllocs.length !== 1 ? 's' : ''}
+                </div>
+              )}
+            </div>
+
+            {sidebarItems.length > 0 && (
+              <div style={{ marginBottom: 14 }}>
+                <div className="sec-title" style={{ marginBottom: 8 }}>MY ALLOCATIONS</div>
+                {sidebarItems.sort((a, b) => b.amount - a.amount).map(({ ideaId, amount }) => {
+                  const idea = ideas.find(i => i.id === ideaId);
+                  if (!idea) return null;
+                  return (
+                    <div key={ideaId} style={{ display: 'flex', alignItems: 'center', padding: '7px 10px', marginBottom: 4, background: 'var(--panel)', border: '1px solid rgba(37,99,235,.18)', borderRadius: 4 }}>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 1 }}>
+                          <DirBadge dir={idea.dir} />
+                          <span className="mono" style={{ fontSize: 11, fontWeight: 700 }}>{idea.ticker}</span>
+                        </div>
+                        <div style={{ fontSize: 9, color: 'var(--text4)' }}>{ideaId}</div>
+                      </div>
+                      <span className="mono" style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>${fmt(amount)}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {!hasSubmitted ? (
               <>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                  <span style={{ fontSize: 9, color: 'var(--text4)' }}>STAGED</span>
-                  <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: stagedTotal > 0 ? 'var(--accent)' : 'var(--text4)' }}>${fmt(stagedTotal)}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <span style={{ fontSize: 9, color: 'var(--text4)' }}>REMAINING</span>
-                  <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: remaining < 0 ? 'var(--short)' : 'var(--long)' }}>${fmt(Math.max(0, remaining))}</span>
-                </div>
-                <div className="bar-track">
-                  <div className="bar-fill" style={{ width: `${Math.min(100, (stagedTotal / ROUND_BUDGET) * 100)}%`, background: remaining < 0 ? 'var(--short)' : 'var(--accent)' }} />
+                {remaining < 0 && (
+                  <div style={{ fontSize: 9, color: 'var(--short)', background: 'var(--short-dim)', padding: '5px 8px', borderRadius: 4, marginBottom: 8, border: '1px solid rgba(220,38,38,.2)' }}>
+                    Over budget by ${fmt(Math.abs(remaining))} — reduce allocations
+                  </div>
+                )}
+                {remaining > 0 && stagedTotal > 0 && (
+                  <div style={{ fontSize: 9, color: 'var(--warn)', background: 'rgba(234,179,8,.07)', padding: '5px 8px', borderRadius: 4, marginBottom: 8, border: '1px solid rgba(234,179,8,.2)' }}>
+                    ${fmt(remaining)} unallocated — must deploy exactly ${fmt(ROUND_BUDGET)}
+                  </div>
+                )}
+                <button
+                  className="btn btn-primary"
+                  style={{ width: '100%', justifyContent: 'center', padding: 10, opacity: stagedTotal === 0 || remaining < 0 || locking ? 0.4 : 1 }}
+                  disabled={remaining !== 0 || locking}
+                  onClick={lockBallot}
+                >
+                  {locking ? 'LOCKING…' : `LOCK ROUND ${currentRound} BALLOT →`}
+                </button>
+                <div style={{ fontSize: 9, color: 'var(--text4)', textAlign: 'center', marginTop: 6 }}>
+                  Immutable after submission · Must deploy exactly ${fmt(ROUND_BUDGET)}
                 </div>
               </>
-            )}
-            {hasSubmitted && (
-              <div style={{ fontSize: 10, color: 'var(--long)', fontWeight: 600 }}>
-                ${fmt(myAllocs.reduce((s, a) => s + a.amount, 0))} across {myAllocs.length} idea{myAllocs.length !== 1 ? 's' : ''}
+            ) : (
+              <div style={{ padding: 14, background: 'var(--long-dim)', border: '1px solid rgba(22,163,74,.2)', borderRadius: 6, textAlign: 'center' }}>
+                <div style={{ fontSize: 20, marginBottom: 4, color: 'var(--long)' }}>✓</div>
+                <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--long)' }}>Round {currentRound} Locked</div>
+                <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>Immutable · Audit logged</div>
               </div>
             )}
-          </div>
 
-          {sidebarItems.length > 0 && (
-            <div style={{ marginBottom: 14 }}>
-              <div className="sec-title" style={{ marginBottom: 8 }}>MY ALLOCATIONS</div>
-              {sidebarItems.sort((a, b) => b.amount - a.amount).map(({ ideaId, amount }) => {
-                const idea = ideas.find(i => i.id === ideaId);
-                if (!idea) return null;
-                return (
-                  <div key={ideaId} style={{ display: 'flex', alignItems: 'center', padding: '7px 10px', marginBottom: 4, background: 'var(--panel)', border: '1px solid rgba(37,99,235,.18)', borderRadius: 4 }}>
-                    <div style={{ flex: 1 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 1 }}>
-                        <DirBadge dir={idea.dir} />
-                        <span className="mono" style={{ fontSize: 11, fontWeight: 700 }}>{idea.ticker}</span>
-                      </div>
-                      <div style={{ fontSize: 9, color: 'var(--text4)' }}>{ideaId}</div>
-                    </div>
-                    <span className="mono" style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>${fmt(amount)}</span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-
-          {!hasSubmitted ? (
-            <>
-              {remaining < 0 && (
-                <div style={{ fontSize: 9, color: 'var(--short)', background: 'var(--short-dim)', padding: '5px 8px', borderRadius: 4, marginBottom: 8, border: '1px solid rgba(220,38,38,.2)' }}>
-                  Over budget by ${fmt(Math.abs(remaining))} — reduce allocations
-                </div>
-              )}
-              {remaining > 0 && stagedTotal > 0 && (
-                <div style={{ fontSize: 9, color: 'var(--warn)', background: 'rgba(234,179,8,.07)', padding: '5px 8px', borderRadius: 4, marginBottom: 8, border: '1px solid rgba(234,179,8,.2)' }}>
-                  ${fmt(remaining)} unallocated — must deploy exactly ${fmt(ROUND_BUDGET)}
-                </div>
-              )}
-              <button
-                className="btn btn-primary"
-                style={{ width: '100%', justifyContent: 'center', padding: 10, opacity: stagedTotal === 0 || remaining < 0 || locking ? 0.4 : 1 }}
-                disabled={remaining !== 0 || locking}
-                onClick={lockBallot}
-              >
-                {locking ? 'LOCKING…' : `LOCK ROUND ${currentRound} BALLOT →`}
-              </button>
-              <div style={{ fontSize: 9, color: 'var(--text4)', textAlign: 'center', marginTop: 6 }}>
-                Immutable after submission · Must deploy exactly ${fmt(ROUND_BUDGET)}
+            <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 6 }}>
+              <div className="sec-title" style={{ marginBottom: 8 }}>LIVE MARKET · R{currentRound}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 9, color: 'var(--text4)' }}>TEAM DEPLOYED</span>
+                <span className="mono" style={{ fontSize: 10, fontWeight: 600 }}>${fmt(totalAlloc)}</span>
               </div>
-            </>
-          ) : (
-            <div style={{ padding: 14, background: 'var(--long-dim)', border: '1px solid rgba(22,163,74,.2)', borderRadius: 6, textAlign: 'center' }}>
-              <div style={{ fontSize: 20, marginBottom: 4, color: 'var(--long)' }}>✓</div>
-              <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--long)' }}>Round {currentRound} Locked</div>
-              <div style={{ fontSize: 9, color: 'var(--text3)', marginTop: 2 }}>Immutable · Audit logged</div>
-            </div>
-          )}
-
-          <div style={{ marginTop: 14, padding: '10px 12px', background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 6 }}>
-            <div className="sec-title" style={{ marginBottom: 8 }}>LIVE MARKET · R{currentRound}</div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 9, color: 'var(--text4)' }}>TEAM DEPLOYED</span>
-              <span className="mono" style={{ fontSize: 10, fontWeight: 600 }}>${fmt(totalAlloc)}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-              <span style={{ fontSize: 9, color: 'var(--text4)' }}>ANALYSTS DONE</span>
-              <span className="mono" style={{ fontSize: 10, fontWeight: 600 }}>{participants}/{totalMembers}</span>
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-              <span style={{ fontSize: 9, color: 'var(--text4)' }}>AVG ALLOCATION</span>
-              <span className="mono" style={{ fontSize: 10, fontWeight: 600 }}>
-                {participants > 0 ? `$${fmt(Math.round(totalAlloc / participants))}` : '—'}
-              </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                <span style={{ fontSize: 9, color: 'var(--text4)' }}>ANALYSTS DONE</span>
+                <span className="mono" style={{ fontSize: 10, fontWeight: 600 }}>{participants}/{totalMembers}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ fontSize: 9, color: 'var(--text4)' }}>AVG ALLOCATION</span>
+                <span className="mono" style={{ fontSize: 10, fontWeight: 600 }}>
+                  {participants > 0 ? `$${fmt(Math.round(totalAlloc / participants))}` : '—'}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

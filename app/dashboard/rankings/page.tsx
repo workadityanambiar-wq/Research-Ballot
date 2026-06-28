@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { DirBadge, StatusBadge } from '@/components/ui/Badge';
 import { Bar } from '@/components/ui/Bar';
 
@@ -8,6 +9,7 @@ type SortMode = 'final' | 'combined';
 
 export default function RankingsPage() {
   const { user, ideas, users } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   const [exp, setExp]       = useState<string | null>(null);
   const [sort, setSort]     = useState<SortMode>('final');
   if (!user) return null;
@@ -23,11 +25,11 @@ export default function RankingsPage() {
   );
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: 16 }}>
-      <div className="sec-hdr" style={{ marginBottom: 12 }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: isMobile ? 12 : 16 }}>
+      <div className="sec-hdr-resp" style={{ marginBottom: 12 }}>
         <div>
-          <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Trade Ranking Engine</div>
-          <div style={{ fontSize: 10, color: 'var(--text3)' }}>Score = 30% Prediction Market + 25% Analyst Skill + 20% Risk/Reward + 25% Quant Overlay{!showId && ' · Analyst identities hidden'}</div>
+          <div style={{ fontSize: isMobile ? 14 : 15, fontWeight: 700, marginBottom: 2 }}>Trade Ranking Engine</div>
+          {!isMobile && <div style={{ fontSize: 10, color: 'var(--text3)' }}>Score = 30% Prediction Market + 25% Analyst Skill + 20% Risk/Reward + 25% Quant Overlay{!showId && ' · Analyst identities hidden'}</div>}
         </div>
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ display: 'flex', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
@@ -51,7 +53,7 @@ export default function RankingsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 6, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)},1fr)`, gap: 6, marginBottom: 12 }}>
         {([['Prediction Market', '30%', 'var(--accent)'], ['Analyst Skill', '25%', 'var(--purple)'], ['Risk / Reward', '20%', 'var(--long)'], ['Quant Overlay', '25%', 'var(--warn)']] as [string, string, string][]).map(([l, w, c]) => (
           <div key={l} className="panel" style={{ padding: '8px 10px', borderTop: `2px solid ${c}` }}>
             <div style={{ fontSize: 9, color: 'var(--text3)', marginBottom: 2 }}>{l}</div>
@@ -60,7 +62,7 @@ export default function RankingsPage() {
         ))}
       </div>
 
-      <div className="panel">
+      <div className="panel tbl-wrap">
         <table className="tbl">
           <thead>
             <tr>
@@ -106,7 +108,7 @@ export default function RankingsPage() {
                     <tr key={`${idea.id}-exp`}>
                       <td colSpan={showId ? (sort === 'combined' ? 15 : 14) : (sort === 'combined' ? 14 : 13)} style={{ padding: 0 }}>
                         <div style={{ padding: '14px 16px', background: 'var(--panel2)', borderTop: '1px solid var(--border)' }}>
-                          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr', gap: 14 }}>
+                          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr 1fr 1fr', gap: 14 }}>
                             <div>
                               <div className="sec-title" style={{ marginBottom: 6 }}>THESIS</div>
                               <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.6, marginBottom: 10 }}>{idea.thesis}</div>

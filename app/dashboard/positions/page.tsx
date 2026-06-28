@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface EnrichedPosition {
   id: string;
@@ -44,6 +45,7 @@ function fmtPct(n: number) { return `${n >= 0 ? '+' : ''}${n.toFixed(2)}%`; }
 
 export default function PositionsPage() {
   const { user } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   const [positions, setPositions] = useState<EnrichedPosition[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -67,18 +69,18 @@ export default function PositionsPage() {
   const totalCapital = summary?.totalEquity ?? 1_000_000;
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+    <div className="scroll-y dash-content" style={{ flex: 1, padding: isMobile ? 12 : 20 }}>
+      <div className="sec-hdr-resp" style={{ marginBottom: isMobile ? 12 : 20 }}>
         <div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Portfolio Positions</h1>
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>Live portfolio with P&L tracking</p>
+          <h1 style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Portfolio Positions</h1>
+          {!isMobile && <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2, marginBottom: 0 }}>Live portfolio with P&L tracking</p>}
         </div>
         <Link href="/dashboard/trades" className="btn btn-ghost btn-sm">+ Trade Proposal</Link>
       </div>
 
       {/* Summary cards */}
       {summary && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8, marginBottom: isMobile ? 12 : 20 }}>
           {[
             { label: 'Total Equity', val: `$${totalCapital.toLocaleString()}`, sub: '1M AUM' },
             { label: 'Cash Balance', val: `$${(summary.cashBalance).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, sub: `${((summary.cashBalance / totalCapital) * 100).toFixed(1)}% free` },

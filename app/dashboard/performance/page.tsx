@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface PerfData {
   totalTrades: number;
@@ -45,6 +46,7 @@ function ScoreBar({ score, max = 10 }: { score: number; max?: number }) {
 
 export default function PerformancePage() {
   const { user } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   const [data, setData] = useState<PerfData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -58,10 +60,10 @@ export default function PerformancePage() {
   if (!user) return null;
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Performance Attribution</h1>
-        <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>Closed trade analysis and attribution scoring</p>
+    <div className="scroll-y dash-content" style={{ flex: 1, padding: isMobile ? 12 : 20 }}>
+      <div style={{ marginBottom: isMobile ? 12 : 20 }}>
+        <h1 style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Performance Attribution</h1>
+        {!isMobile && <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 0 }}>Closed trade analysis and attribution scoring</p>}
       </div>
 
       {loading ? (
@@ -75,7 +77,7 @@ export default function PerformancePage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1100 }}>
           {/* KPI bar */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8 }}>
             {[
               { label: 'Total Trades', val: String(data.totalTrades), sub: `${data.winners}W / ${data.losers}L` },
               { label: 'Win Rate', val: `${data.winRate.toFixed(1)}%`, sub: 'closed trades', color: data.winRate >= 50 ? 'var(--long)' : 'var(--short)' },
@@ -90,7 +92,7 @@ export default function PerformancePage() {
             ))}
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
             {/* Attribution radar */}
             {data.avgAttribution && (
               <div className="panel" style={{ padding: 16 }}>

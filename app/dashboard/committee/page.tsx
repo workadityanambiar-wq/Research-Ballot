@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 type IdeaRow = {
   id: string; ticker: string; dir: string; finalScore: number | null;
@@ -163,6 +164,7 @@ function IdeaCard({ idea, readiness, loadingR, idx }: { idea: IdeaRow; readiness
 }
 
 export default function CommitteePage() {
+  const { isMobile, cols } = useBreakpoint();
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [ideas, setIdeas] = useState<IdeaRow[]>([]);
   const [readiness, setReadiness] = useState<ReadinessMap>({});
@@ -206,7 +208,7 @@ export default function CommitteePage() {
   const sparkData = [3, 5, 4, 7, 6, 8, 7, 9, 8, 10];
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: '18px 20px', background: 'var(--bg)' }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: isMobile ? '12px' : '18px 20px', background: 'var(--bg)' }}>
 
       {/* ── Hero ── */}
       <div style={{
@@ -215,13 +217,13 @@ export default function CommitteePage() {
         borderRadius: 12, padding: '16px 20px', marginBottom: 16, position: 'relative', overflow: 'hidden',
       }}>
         <div style={{ position: 'absolute', inset: 0, opacity: 0.025, backgroundImage: 'linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)', backgroundSize: '28px 28px' }} />
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, marginBottom: 14 }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
           <div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4 }}>
-              <span style={{ fontSize: 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-.02em' }}>Investment Committee</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
+              <span style={{ fontSize: isMobile ? 14 : 17, fontWeight: 800, color: 'var(--text)', letterSpacing: '-.02em' }}>Investment Committee</span>
               <span className="badge badge-accent pulse">CYCLE ACTIVE</span>
             </div>
-            <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5 }}>
+            {!isMobile && <div style={{ fontSize: 11, color: 'var(--text3)', lineHeight: 1.5 }}>
               {nextMeeting ? (
                 <>
                   <span>Next meeting: </span>
@@ -235,17 +237,17 @@ export default function CommitteePage() {
               ) : (
                 <span>No upcoming meetings — <Link href="/dashboard/committee/meetings" style={{ color: 'var(--accent)' }}>schedule one</Link></span>
               )}
-            </div>
+            </div>}
           </div>
-          <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+          <div style={{ display: 'flex', gap: 6, flexShrink: 0, flexWrap: 'wrap' }}>
             <Link href="/dashboard/committee/meetings" className="btn btn-ghost btn-sm">Meetings</Link>
-            <Link href="/dashboard/committee/archive" className="btn btn-ghost btn-sm">Archive</Link>
+            {!isMobile && <Link href="/dashboard/committee/archive" className="btn btn-ghost btn-sm">Archive</Link>}
             <Link href="/dashboard/committee/analytics" className="btn btn-primary btn-sm">Analytics</Link>
           </div>
         </div>
 
         {/* Workflow pipeline */}
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start' }}>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'flex-start', overflowX: isMobile ? 'auto' : 'visible', paddingBottom: isMobile ? 4 : 0 }}>
           {STAGES.map((stage, i) => {
             const isDone = i < 1;
             const isCurrent = i === 1;
@@ -274,13 +276,13 @@ export default function CommitteePage() {
       </div>
 
       {/* ── KPI Cards ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8, marginBottom: isMobile ? 8 : 16 }}>
         <KPICard icon="◎" label="Under Review" value={loading ? '—' : ideas.length} color="var(--accent)" sub="ideas in pipeline" sparkData={sparkData} />
         <KPICard icon="✓" label="Ready to Vote" value={loading ? '—' : readyIdeas.length} color="var(--long)" sub="cleared all gates" sparkData={[2,3,3,4,3,5,4,6,5,readyIdeas.length]} href="/dashboard/committee" />
         <KPICard icon="?" label="Open Questions" value={loading ? '—' : (analytics?.questions.open ?? '—')} color="var(--warn)" sub="awaiting response" sparkData={[8,6,9,7,5,8,6,7,5,analytics?.questions.open ?? 0]} href="/dashboard/action-center" />
         <KPICard icon="⚡" label="Open Challenges" value={loading ? '—' : (analytics?.challenges.open ?? '—')} color="#ef4444" sub="need resolution" sparkData={[3,4,2,5,3,4,2,3,2,analytics?.challenges.open ?? 0]} href="/dashboard/action-center" />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8, marginBottom: isMobile ? 14 : 20 }}>
         <KPICard icon="◈" label="Alloc Queue" value={loading ? '—' : (analytics?.allocationQueue.count ?? '—')} color="var(--purple)" sub="awaiting deployment" href="/dashboard/allocation-queue" />
         <KPICard icon="◆" label="Approved" value={loading ? '—' : (analytics?.overview.approvedIdeas ?? '—')} color="var(--long)" sub="this cycle" sparkData={[0,1,1,2,2,3,3,4,4,analytics?.overview.approvedIdeas ?? 0]} />
         <KPICard icon="✕" label="Rejected" value={loading ? '—' : (analytics?.overview.rejectedIdeas ?? '—')} color="var(--short)" sub="this cycle" />
@@ -288,7 +290,7 @@ export default function CommitteePage() {
       </div>
 
       {/* ── Main Grid ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 300px', gap: 16, alignItems: 'start' }}>
 
         {/* Left: Ideas */}
         <div>

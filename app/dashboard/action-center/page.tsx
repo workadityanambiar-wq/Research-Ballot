@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 type ActionItem = {
   id: string; type: string; priority: string;
@@ -69,6 +70,7 @@ function ActionCard({ action, idx }: { action: ActionItem; idx: number }) {
 }
 
 export default function ActionCenterPage() {
+  const { isMobile, cols } = useBreakpoint();
   const [actions, setActions] = useState<ActionItem[]>([]);
   const [summary, setSummary] = useState<Summary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -96,7 +98,7 @@ export default function ActionCenterPage() {
   const totalUrgent = actions.filter(a => a.priority === 'CRITICAL' || a.priority === 'HIGH').length;
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: '18px 20px', background: 'var(--bg)' }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: isMobile ? 12 : '18px 20px', background: 'var(--bg)' }}>
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 16 }}>
@@ -116,7 +118,7 @@ export default function ActionCenterPage() {
 
       {/* Summary KPIs */}
       {summary && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(6, 3, 2)}, 1fr)`, gap: 8, marginBottom: 14 }}>
           {[
             { label: 'Questions', value: summary.openQuestions, color: 'var(--warn)', icon: '?', href: '/dashboard/committee' },
             { label: 'Challenges', value: summary.openChallenges, color: 'var(--short)', icon: '⚡', href: '/dashboard/committee' },
@@ -145,7 +147,7 @@ export default function ActionCenterPage() {
       )}
 
       {/* Main layout */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 280px', gap: 16, alignItems: 'start' }}>
 
         {/* Action list */}
         <div>

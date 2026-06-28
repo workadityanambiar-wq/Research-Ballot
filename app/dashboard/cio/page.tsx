@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface Summary {
   totalEquity: number; cashBalance: number; grossExposure: number; netExposure: number;
@@ -24,6 +25,7 @@ interface Alert {
 
 export default function CIOPage() {
   const { user } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   const [summary, setSummary] = useState<Summary | null>(null);
   const [timeline, setTimeline] = useState<TimelineEvent[]>([]);
   const [alerts, setAlerts] = useState<Alert[]>([]);
@@ -55,16 +57,16 @@ export default function CIOPage() {
   const totalCapital = summary?.totalEquity ?? 1_000_000;
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+    <div className="scroll-y dash-content" style={{ flex: 1, padding: isMobile ? 12 : 20 }}>
+      <div className="sec-hdr-resp" style={{ marginBottom: isMobile ? 12 : 20 }}>
         <div>
-          <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Executive Dashboard</h1>
-          <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>Capital overview, pipeline, and portfolio metrics</p>
+          <h1 style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: 'var(--text)', margin: 0 }}>Executive Dashboard</h1>
+          {!isMobile && <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2, marginBottom: 0 }}>Capital overview, pipeline, and portfolio metrics</p>}
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <Link href="/dashboard/positions" className="btn btn-ghost btn-sm">Positions</Link>
-          <Link href="/dashboard/risk" className="btn btn-ghost btn-sm">Risk</Link>
-          <Link href="/dashboard/performance" className="btn btn-ghost btn-sm">Performance</Link>
+          {!isMobile && <Link href="/dashboard/risk" className="btn btn-ghost btn-sm">Risk</Link>}
+          <Link href="/dashboard/performance" className="btn btn-ghost btn-sm">Perf</Link>
         </div>
       </div>
 
@@ -94,7 +96,7 @@ export default function CIOPage() {
           {/* Capital overview */}
           {summary && (
             <>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8 }}>
                 {[
                   { label: 'Total Capital', val: `$${(totalCapital / 1000000).toFixed(1)}M`, sub: '1M AUM' },
                   { label: 'Capital Deployed', val: `$${(summary.grossExposure / 1000).toFixed(0)}k`, sub: `${((summary.grossExposure / totalCapital) * 100).toFixed(1)}%` },
@@ -109,7 +111,7 @@ export default function CIOPage() {
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8, marginTop: 8 }}>
                 {[
                   { label: 'Unrealized P&L', val: `${summary.unrealizedPnl >= 0 ? '+' : ''}$${Math.abs(summary.unrealizedPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: summary.unrealizedPnl >= 0 ? 'var(--long)' : 'var(--short)', sub: 'open positions' },
                   { label: 'Realized P&L', val: `${summary.realizedPnl >= 0 ? '+' : ''}$${Math.abs(summary.realizedPnl).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, color: summary.realizedPnl >= 0 ? 'var(--long)' : 'var(--short)', sub: 'closed trades' },
@@ -124,7 +126,7 @@ export default function CIOPage() {
                 ))}
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8, marginTop: 8 }}>
                 {[
                   { label: 'Open Positions', val: String(summary.openPositions), href: '/dashboard/positions' },
                   { label: 'Active Trades', val: String(summary.activeTrades), href: '/dashboard/trades' },
@@ -144,7 +146,7 @@ export default function CIOPage() {
             </>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 360px', gap: 16 }}>
             {/* Timeline */}
             <div className="panel" style={{ padding: 16 }}>
               <div className="sec-title" style={{ marginBottom: 12 }}>Portfolio Timeline</div>

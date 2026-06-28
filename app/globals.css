@@ -105,3 +105,228 @@ textarea.inp{resize:vertical;min-height:70px;line-height:1.6}
 .line-clamp-3{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .research-card-inner{transition:transform .3s ease}
 .research-card:hover .research-card-inner{transform:scale(1.04)}
+
+/* ═══════════════════════════════════════════════════════
+   RESPONSIVE SYSTEM
+═══════════════════════════════════════════════════════ */
+
+/* ── CSS custom props for spacing ── */
+:root{
+  --page-px:20px;--page-py:20px;
+  --card-p:16px;
+  --gap:12px;
+  --sidebar-w:192px;
+  --header-h:0px; /* desktop: no mobile header */
+}
+@media(max-width:1024px){:root{--page-px:16px;--page-py:16px;--gap:10px}}
+@media(max-width:767px){
+  :root{--page-px:12px;--page-py:14px;--card-p:12px;--gap:8px;--header-h:52px}
+  html,body{overflow:auto;overflow-x:hidden}
+}
+@media(max-width:479px){:root{--page-px:10px;--page-py:12px;--card-p:10px;--gap:6px}}
+
+/* ── Grid utility classes ── */
+/* Use className="g2/g3/g4" instead of inline gridTemplateColumns */
+.g2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap)}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap)}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--gap)}
+.g5{display:grid;grid-template-columns:repeat(5,1fr);gap:var(--gap)}
+.g6{display:grid;grid-template-columns:repeat(6,1fr);gap:var(--gap)}
+.g-auto{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:var(--gap)}
+.g-auto-sm{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:var(--gap)}
+
+@media(max-width:1024px){
+  .g4{grid-template-columns:repeat(2,1fr)}
+  .g5{grid-template-columns:repeat(3,1fr)}
+  .g6{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:767px){
+  .g2{grid-template-columns:1fr}
+  .g3{grid-template-columns:repeat(2,1fr)}
+  .g4{grid-template-columns:repeat(2,1fr)}
+  .g5{grid-template-columns:repeat(2,1fr)}
+  .g6{grid-template-columns:repeat(2,1fr)}
+  .g-m1{grid-template-columns:1fr!important}
+}
+@media(max-width:479px){
+  .g2,.g3,.g4,.g5,.g6{grid-template-columns:1fr}
+}
+
+/* ── Responsive page wrapper ── */
+.page{padding:var(--page-px);padding-top:var(--page-py)}
+.page-h{height:100%;overflow-y:auto;overflow-x:hidden}
+
+/* ── Responsive table wrapper ── */
+.tbl-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px}
+.tbl-wrap .tbl{min-width:600px}
+
+/* ── Table → Card on mobile ── */
+@media(max-width:640px){
+  .tbl-card thead{display:none}
+  .tbl-card tbody tr{display:block;background:var(--panel);border:1px solid var(--border);border-radius:8px;margin-bottom:8px;padding:10px 12px}
+  .tbl-card tbody td{display:flex;align-items:center;justify-content:space-between;border:none;height:auto;padding:3px 0;font-size:11px}
+  .tbl-card tbody td:before{content:attr(data-label);font-size:9px;font-weight:700;color:var(--text4);letter-spacing:.05em;text-transform:uppercase;font-family:var(--sans)}
+  .tbl-card tbody tr:last-child{margin-bottom:0}
+}
+
+/* ── Sidebar drawer system ── */
+.sidebar-overlay{
+  display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:99;
+  animation:fadeIn .2s ease-out;
+  backdrop-filter:blur(2px);
+  -webkit-backdrop-filter:blur(2px);
+}
+.sidebar-overlay.open{display:block}
+
+.drawer{
+  position:fixed;top:0;left:0;height:100%;z-index:100;
+  transform:translateX(-100%);transition:transform .25s cubic-bezier(.4,0,.2,1);
+  will-change:transform;
+}
+.drawer.open{transform:translateX(0)}
+
+/* ── Mobile header ── */
+.mob-header{
+  display:none;position:fixed;top:0;left:0;right:0;height:52px;z-index:50;
+  background:var(--panel);border-bottom:1px solid var(--border);
+  padding:0 14px;align-items:center;gap:10px;
+  box-shadow:0 1px 4px rgba(0,0,0,.08);
+}
+@media(max-width:767px){.mob-header{display:flex}}
+
+.mob-menu-btn{
+  display:none;width:36px;height:36px;border-radius:8px;border:1px solid var(--border);
+  background:var(--panel);cursor:pointer;align-items:center;justify-content:center;
+  font-size:14px;color:var(--text2);flex-shrink:0;
+}
+@media(max-width:767px){.mob-menu-btn{display:flex}}
+
+/* ── Bottom navigation ── */
+.bottom-nav{
+  display:none;position:fixed;bottom:0;left:0;right:0;z-index:40;
+  background:var(--panel);border-top:1px solid var(--border);
+  padding:6px 0 max(6px, env(safe-area-inset-bottom));
+  box-shadow:0 -2px 12px rgba(0,0,0,.08);
+}
+@media(max-width:767px){.bottom-nav{display:flex}}
+
+.bottom-nav-item{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;padding:4px 2px;border:none;background:none;cursor:pointer;
+  color:var(--text4);font-size:8px;font-weight:600;letter-spacing:.04em;
+  text-transform:uppercase;font-family:var(--sans);text-decoration:none;
+  transition:color .12s;
+  -webkit-tap-highlight-color:transparent;
+}
+.bottom-nav-item.active,.bottom-nav-item:active{color:var(--accent)}
+.bottom-nav-item span:first-child{font-size:18px;line-height:1}
+
+/* ── Content offset for mobile header ── */
+@media(max-width:767px){
+  .dash-content{padding-top:calc(var(--header-h) + var(--page-py))!important;padding-bottom:70px!important}
+}
+
+/* ── Touch-friendly controls ── */
+@media(max-width:767px){
+  .inp{padding:10px 12px;font-size:14px;min-height:44px}
+  .btn{min-height:40px;padding:8px 14px;font-size:11px}
+  .btn-sm{min-height:36px;padding:6px 12px;font-size:10px}
+  select.inp{min-height:44px}
+  textarea.inp{min-height:80px}
+}
+
+/* ── Responsive login card ── */
+@media(max-width:479px){
+  .login-card{width:calc(100vw - 32px);padding:24px 20px;border-radius:12px}
+  .login-wrap{align-items:flex-start;padding-top:40px}
+}
+
+/* ── Ticker bar hide on mobile ── */
+@media(max-width:767px){.ticker-bar{display:none}}
+
+/* ── Responsive typography ── */
+@media(max-width:767px){
+  .stat-val{font-size:18px}
+  .sec-title{font-size:10px}
+  .form-label{font-size:9px}
+}
+
+/* ── Utility: show/hide ── */
+.hide-mobile{display:initial}
+.show-mobile{display:none}
+@media(max-width:767px){
+  .hide-mobile{display:none!important}
+  .show-mobile{display:initial!important}
+}
+.hide-tablet{display:initial}
+@media(max-width:1023px){.hide-tablet{display:none!important}}
+
+/* ── Responsive panel padding ── */
+@media(max-width:767px){
+  .panel,.panel2,.panel-glow{border-radius:10px}
+}
+
+/* ── FAB (Floating Action Button) ── */
+.fab{
+  display:none;position:fixed;bottom:72px;right:16px;z-index:45;
+  width:52px;height:52px;border-radius:26px;
+  background:var(--accent);color:#fff;border:none;cursor:pointer;
+  font-size:22px;align-items:center;justify-content:center;
+  box-shadow:0 4px 16px rgba(37,99,235,.4);
+  transition:transform .15s,box-shadow .15s;
+  -webkit-tap-highlight-color:transparent;
+}
+.fab:active{transform:scale(.95)}
+@media(max-width:767px){.fab{display:flex}}
+
+/* ── Scroll containers ── */
+.scroll-x{overflow-x:auto;-webkit-overflow-scrolling:touch}
+@media(max-width:767px){
+  .scroll-y{-webkit-overflow-scrolling:touch}
+}
+
+/* ── Responsive two-column layout (sidebar + main) ── */
+.layout-2col{display:grid;grid-template-columns:1fr 280px;gap:16px;align-items:start}
+.layout-3col{display:grid;grid-template-columns:1fr 1fr 280px;gap:14px;align-items:start}
+@media(max-width:1024px){
+  .layout-2col{grid-template-columns:1fr 240px}
+  .layout-3col{grid-template-columns:1fr 1fr}
+}
+@media(max-width:767px){
+  .layout-2col,.layout-3col{grid-template-columns:1fr}
+}
+
+/* ── Safe area for notched phones ── */
+@supports(padding:max(0px)){
+  .page,.dash-content{
+    padding-left:max(var(--page-px),env(safe-area-inset-left));
+    padding-right:max(var(--page-px),env(safe-area-inset-right));
+  }
+}
+
+/* ── Focus visible (accessibility) ── */
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
+
+/* ── Swipeable tabs indicator ── */
+.tab-bar{display:flex;gap:2px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:4px;box-shadow:var(--shadow)}
+@media(max-width:767px){
+  .tab-bar{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px;scrollbar-width:none}
+  .tab-bar::-webkit-scrollbar{display:none}
+  .tab-bar button{white-space:nowrap;flex-shrink:0}
+}
+
+/* ── Card hover disabled on touch ── */
+@media(hover:none){
+  .idea-card:hover{transform:none;box-shadow:var(--shadow)}
+  .btn-primary:hover{transform:none;box-shadow:none}
+}
+
+/* ── Responsive section header ── */
+.sec-hdr-resp{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--gap);flex-wrap:wrap;gap:8px}
+
+/* ── Print ── */
+@media print{
+  .sidebar-overlay,.drawer,.mob-header,.bottom-nav,.fab,.ticker-bar{display:none!important}
+}
+

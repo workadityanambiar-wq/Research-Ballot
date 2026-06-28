@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface RiskData {
   totalPositions: number;
@@ -34,6 +35,7 @@ function Bar({ pct, color = 'var(--accent)' }: { pct: number; color?: string }) 
 
 export default function RiskPage() {
   const { user } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   const [data, setData] = useState<RiskData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -47,10 +49,10 @@ export default function RiskPage() {
   if (!user) return null;
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
-      <div style={{ marginBottom: 20 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Risk Dashboard</h1>
-        <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>Portfolio concentration, exposure, and risk metrics</p>
+    <div className="scroll-y dash-content" style={{ flex: 1, padding: isMobile ? 12 : 20 }}>
+      <div style={{ marginBottom: isMobile ? 12 : 20 }}>
+        <h1 style={{ fontSize: isMobile ? 15 : 18, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Risk Dashboard</h1>
+        {!isMobile && <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 0 }}>Portfolio concentration, exposure, and risk metrics</p>}
       </div>
 
       {loading ? (
@@ -64,7 +66,7 @@ export default function RiskPage() {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1100 }}>
           {/* Top metrics */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8 }}>
             {[
               { label: 'Total Exposure', val: `$${(data.totalExposure / 1000).toFixed(0)}k`, sub: `${data.concentrationPct.toFixed(1)}% of capital`, warn: data.concentrationPct > 80 },
               { label: 'Capital at Risk', val: `$${(data.capitalAtRisk / 1000).toFixed(0)}k`, sub: `${((data.capitalAtRisk / TOTAL_CAPITAL) * 100).toFixed(1)}% of capital`, warn: data.capitalAtRisk / TOTAL_CAPITAL > 0.1 },
@@ -106,7 +108,7 @@ export default function RiskPage() {
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 1)}, 1fr)`, gap: 12 }}>
             {/* By Direction */}
             <div className="panel" style={{ padding: 16 }}>
               <div className="sec-title" style={{ marginBottom: 12 }}>Long vs Short</div>

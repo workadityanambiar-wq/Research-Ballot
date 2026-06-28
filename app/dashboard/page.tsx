@@ -7,6 +7,7 @@ import { DirBadge, SevBadge } from '@/components/ui/Badge';
 import { Sparkline, Donut } from '@/components/ui/Charts';
 import { useState, useEffect } from 'react';
 import { WEEK_ID } from '@/lib/data';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import type { AuditEntry } from '@/lib/types';
 
 interface Mt5Health {
@@ -58,6 +59,8 @@ export default function DashboardPage() {
       .catch(() => { setMt5({ status: 'disconnected', mt5_connected: false }); setMt5Loading(false); });
   }, [user]);
 
+  const { isMobile, isTablet, cols } = useBreakpoint();
+
   if (!user) return null;
 
   const totalCredits = Object.values(votes).reduce((a, vobj) => a + Object.values(vobj).reduce((b, v) => b + v, 0), 0);
@@ -78,10 +81,10 @@ export default function DashboardPage() {
   const hasPerf = perfSeries.length >= 2;
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: 16 }}>
-      <div className="sec-hdr">
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: 'var(--page-px)' }}>
+      <div className="sec-hdr-resp" style={{ marginBottom: 12 }}>
         <div>
-          <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>
+          <div style={{ fontSize: isMobile ? 14 : 16, fontWeight: 700, marginBottom: 2 }}>
             {user.role === 'CIO' ? 'Executive Dashboard' : 'Research Dashboard'}
           </div>
           <div style={{ fontSize: 10, color: 'var(--text3)' }}>
@@ -91,11 +94,11 @@ export default function DashboardPage() {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           {kpisError && <span className="badge badge-warn" style={{ fontSize: 8 }}>METRICS OFFLINE</span>}
           <span className="badge badge-low pulse">LIVE</span>
-          <span className="badge badge-dim">{WEEK_ID}</span>
+          {!isMobile && <span className="badge badge-dim">{WEEK_ID}</span>}
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(5, 3, 2)},1fr)`, gap: 8, marginBottom: 12 }}>
         <StatCard
           label="Portfolio Return (WTD)"
           value={kpisLoading ? '…' : wtdReturn}
@@ -119,7 +122,7 @@ export default function DashboardPage() {
       </div>
 
       {/* MT5 Connection widget */}
-      <div className="panel" style={{ padding: '10px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div className="panel" style={{ padding: '10px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
           <div style={{
             width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
@@ -195,7 +198,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : isTablet ? '1fr 1fr' : '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         <div className="panel" style={{ padding: 12 }}>
           <div className="sec-hdr" style={{ marginBottom: 8 }}><span className="sec-title">Top Ranked Ideas</span><span className="badge badge-accent">{WEEK_ID.split('-')[0]}</span></div>
           {ideas.slice(0, 5).map((idea, i) => {
@@ -261,13 +264,13 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 10 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '2fr 1fr', gap: 10 }}>
         <div className="panel" style={{ padding: 12 }}>
           <div className="sec-hdr" style={{ marginBottom: 8 }}>
             <span className="sec-title">Ideas · Capital + Quant</span>
             <span className="badge badge-low pulse">LIVE</span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 4 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(5, 4, 3)},1fr)`, gap: 4 }}>
             {ideas.map(idea => {
               const maxCredits = Math.max(...ideas.map(i => i.totalCredits), 1);
               const pct = (idea.totalCredits / maxCredits) * 100;

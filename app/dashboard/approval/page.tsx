@@ -1,10 +1,12 @@
 'use client';
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { DirBadge, StatusBadge } from '@/components/ui/Badge';
 
 export default function ApprovalPage() {
   const { user, ideas, refreshIdeas } = useApp();
+  const { isMobile } = useBreakpoint();
   const [modal, setModal] = useState<{ id: string; ticker: string; action: 'approve' | 'reject' } | null>(null);
   const [pin, setPin] = useState('');
   const [confirming, setConfirming] = useState(false);
@@ -35,7 +37,7 @@ export default function ApprovalPage() {
   };
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+    <div className="dash-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
       {modal && (
         <div style={{ position: 'absolute', inset: 0, background: 'rgba(8,9,12,.88)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 200 }}>
           <div className="panel-glow slide-up" style={{ padding: 28, width: 340, textAlign: 'center' }}>
@@ -65,7 +67,7 @@ export default function ApprovalPage() {
         {pending.length === 0 ? (
           <div style={{ textAlign: 'center', padding: 40, color: 'var(--text4)' }}><div style={{ fontSize: 32, marginBottom: 8 }}>✓</div><div>All trades reviewed.</div></div>
         ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 16 }}>
             {pending.map(idea => (
               <div key={idea.id} className="panel" style={{ padding: 14 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
@@ -89,7 +91,7 @@ export default function ApprovalPage() {
                     );
                   })()}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 6, marginBottom: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : '1fr 1fr 1fr 1fr', gap: 6, marginBottom: 10 }}>
                   {[
                     ['FINAL SCORE', idea.finalScore.toFixed(1), 'var(--accent)'],
                     ['EXP. RETURN', '+' + idea.expRet + '%', 'var(--long)'],
@@ -155,7 +157,7 @@ export default function ApprovalPage() {
         {ideas.filter(i => i.approvalStatus === 'APPROVED').length > 0 && (
           <>
             <div className="sec-title" style={{ marginBottom: 8 }}>APPROVED TRADES</div>
-            <div className="panel">
+            <div className="panel tbl-wrap">
               <table className="tbl">
                 <thead>
                   <tr>
