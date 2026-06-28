@@ -9,10 +9,34 @@ type QueueEntry = {
   updatedBy: string | null; createdAt: string; updatedAt: string;
   idea: {
     id: string; ticker: string; dir: string; finalScore: number | null;
-    approvalStatus: string; pmScore: number | null;
+    approvalStatus: string; pmScore: number | null; quantScore?: number;
     researchDoc: { overview: string | null } | null;
   } | null;
 };
+
+const RISK_CONFIG: Record<string, { label: string; color: string; bg: string; border: string; priority: number }> = {
+  LOW:    { label: 'Low',    color: 'var(--long)',   bg: 'var(--long-dim)',   border: 'rgba(22,163,74,.25)',    priority: 3 },
+  MEDIUM: { label: 'Medium', color: 'var(--warn)',   bg: 'var(--warn-dim)',   border: 'rgba(217,119,6,.25)',   priority: 2 },
+  HIGH:   { label: 'High',   color: 'var(--short)',  bg: 'var(--short-dim)',  border: 'rgba(220,38,38,.25)',   priority: 1 },
+};
+
+const STATUS_OPTS = ['PENDING', 'IN_PROGRESS', 'ALLOCATED', 'ON_HOLD', 'CANCELLED'];
+
+function StatusBadge({ status }: { status: string }) {
+  const cfg: Record<string, [string, string]> = {
+    PENDING:     ['var(--warn)',   'var(--warn-dim)'],
+    IN_PROGRESS: ['var(--accent)', 'var(--accent-dim)'],
+    ALLOCATED:   ['var(--long)',   'var(--long-dim)'],
+    ON_HOLD:     ['var(--text4)', 'var(--bg)'],
+    CANCELLED:   ['var(--short)',  'var(--short-dim)'],
+  };
+  const [color, bg] = cfg[status] ?? ['var(--text4)', 'var(--bg)'];
+  return (
+    <span style={{ fontSize: 9, fontWeight: 700, color, background: bg, padding: '2px 7px', borderRadius: 4, fontFamily: 'var(--mono)', letterSpacing: '.05em' }}>
+      {status.replace('_', ' ')}
+    </span>
+  );
+}
 
 export default function AllocationQueuePage() {
   const [entries, setEntries] = useState<QueueEntry[]>([]);
@@ -22,6 +46,7 @@ export default function AllocationQueuePage() {
   const [addingNotes, setAddingNotes] = useState('');
   const [addingCapital, setAddingCapital] = useState('');
   const [adding, setAdding] = useState(false);
+  const [showAddForm, setShowAddForm] = useState(false);
 
   const load = useCallback(async () => {
     const [qRes, iRes] = await Promise.all([
@@ -45,6 +70,7 @@ export default function AllocationQueuePage() {
       body: JSON.stringify({ action: 'add', notes: addingNotes, capitalRequested: addingCapital ? Number(addingCapital) : undefined }),
     });
     setAddingIdea(''); setAddingNotes(''); setAddingCapital(''); setAdding(false);
+    setShowAddForm(false);
     load();
   };
 
@@ -68,121 +94,207 @@ export default function AllocationQueuePage() {
 
   const queuedIdeaIds = new Set(entries.map(e => e.ideaId));
   const availableIdeas = approvedIdeas.filter(i => !queuedIdeaIds.has(i.id));
+  const sorted = [...entries].sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999));
+
+  const totalCapital = entries.reduce((s, e) => s + (e.capitalRequested ?? 0), 0);
+  const pendingCount = entries.filter(e => e.status === 'PENDING' || e.status === 'IN_PROGRESS').length;
+  const highRiskCount = entries.filter(e => e.riskRating === 'HIGH').length;
+  const avgScore = entries.length > 0
+    ? entries.reduce((s, e) => s + (e.idea?.finalScore ?? 0), 0) / entries.length
+    : 0;
 
   return (
-    <div className="p-6 space-y-5 max-w-5xl mx-auto">
-      <div className="flex items-center justify-between">
+    <div className="scroll-y" style={{ height: '100%', padding: '18px 20px', background: 'var(--bg)' }}>
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 16 }}>
         <div>
-          <h1 className="text-2xl font-bold">Allocation Queue</h1>
-          <p className="text-[var(--text3)] text-sm mt-0.5">Approved ideas awaiting capital deployment</p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <Link href="/dashboard/committee" style={{ fontSize: 10, color: 'var(--text4)', fontWeight: 600, letterSpacing: '.04em', textDecoration: 'none' }}>← COMMITTEE</Link>
+          </div>
+          <h1 style={{ fontSize: 18, fontWeight: 800, color: 'var(--text)', letterSpacing: '-.02em', marginBottom: 3 }}>Allocation Queue</h1>
+          <p style={{ fontSize: 11, color: 'var(--text3)' }}>Approved ideas awaiting capital deployment and execution</p>
         </div>
-        <Link href="/dashboard/committee" className="btn btn-ghost btn-sm">← Committee</Link>
+        <div style={{ display: 'flex', gap: 6, flexShrink: 0, marginTop: 4 }}>
+          {availableIdeas.length > 0 && (
+            <button onClick={() => setShowAddForm(v => !v)} className={showAddForm ? 'btn btn-ghost btn-sm' : 'btn btn-primary btn-sm'}>
+              {showAddForm ? '× Cancel' : '+ Add to Queue'}
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* Add to queue */}
-      {availableIdeas.length > 0 && (
-        <div className="panel p-4">
-          <div className="sec-title mb-3">Add to Queue</div>
-          <div className="flex flex-wrap gap-2">
-            <select value={addingIdea} onChange={e => setAddingIdea(e.target.value)} className="inp flex-1 min-w-48 text-sm">
+      {/* KPI bar */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+        {[
+          { label: 'Capital Waiting', value: `$${(totalCapital / 1000).toFixed(0)}K`, color: 'var(--accent)', icon: '◈', sub: `${entries.length} trade${entries.length !== 1 ? 's' : ''}` },
+          { label: 'Pending Execution', value: pendingCount, color: 'var(--warn)', icon: '◷', sub: 'awaiting deployment' },
+          { label: 'High Risk Trades', value: highRiskCount, color: 'var(--short)', icon: '⛨', sub: highRiskCount > 0 ? 'review required' : 'all clear' },
+          { label: 'Avg Score', value: avgScore > 0 ? avgScore.toFixed(1) : '—', color: 'var(--purple)', icon: '◆', sub: 'composite rating' },
+        ].map(kpi => (
+          <div key={kpi.label} style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', boxShadow: 'var(--shadow)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
+              <span style={{ fontSize: 12, color: kpi.color }}>{kpi.icon}</span>
+              <span style={{ fontSize: 9, fontWeight: 600, color: 'var(--text4)', letterSpacing: '.05em', textTransform: 'uppercase' }}>{kpi.label}</span>
+            </div>
+            <div style={{ fontSize: 22, fontWeight: 800, fontFamily: 'var(--mono)', color: kpi.color, lineHeight: 1, marginBottom: 3 }}>{kpi.value}</div>
+            <div style={{ fontSize: 10, color: 'var(--text4)' }}>{kpi.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Add form */}
+      {showAddForm && availableIdeas.length > 0 && (
+        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px', marginBottom: 16, boxShadow: 'var(--shadow)' }}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 10 }}>Add Approved Idea to Queue</div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <select value={addingIdea} onChange={e => setAddingIdea(e.target.value)} className="inp" style={{ flex: 2, minWidth: 200, fontSize: 11 }}>
               <option value="">Select approved idea…</option>
               {availableIdeas.map(i => (
-                <option key={i.id} value={i.id}>
-                  {i.ticker} ({i.dir}) — Score: {i.finalScore?.toFixed(1) ?? '—'}
-                </option>
+                <option key={i.id} value={i.id}>{i.ticker} ({i.dir}) · Score: {i.finalScore?.toFixed(1) ?? '—'}</option>
               ))}
             </select>
-            <input value={addingCapital} onChange={e => setAddingCapital(e.target.value)} placeholder="Capital requested $"
-              className="inp w-36 text-sm" type="number" />
-            <input value={addingNotes} onChange={e => setAddingNotes(e.target.value)} placeholder="Notes (optional)"
-              className="inp flex-1 text-sm" />
+            <input value={addingCapital} onChange={e => setAddingCapital(e.target.value)}
+              placeholder="Capital requested ($)" className="inp" style={{ width: 160, fontSize: 11 }} type="number" />
+            <input value={addingNotes} onChange={e => setAddingNotes(e.target.value)}
+              placeholder="Notes (optional)" className="inp" style={{ flex: 1, minWidth: 140, fontSize: 11 }} />
             <button onClick={addToQueue} disabled={adding || !addingIdea} className="btn btn-primary btn-sm">
-              Add
+              {adding ? 'Adding…' : 'Add to Queue'}
             </button>
           </div>
         </div>
       )}
 
+      {/* Queue table */}
       {loading ? (
-        <div className="text-[var(--text3)]">Loading…</div>
+        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden' }}>
+          {[...Array(4)].map((_, i) => (
+            <div key={i} style={{ height: 56, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', padding: '0 16px', gap: 16 }}>
+              {[24, 80, 60, 80, 50, 70].map((w, j) => (
+                <div key={j} style={{ height: 10, width: w, background: 'var(--border)', borderRadius: 4, animation: 'pulse 1.5s ease infinite' }} />
+              ))}
+            </div>
+          ))}
+        </div>
       ) : entries.length === 0 ? (
-        <div className="panel p-12 text-center text-[var(--text4)]">
-          No ideas in allocation queue. Add approved ideas above.
+        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, padding: '48px 24px', textAlign: 'center', boxShadow: 'var(--shadow)' }}>
+          <div style={{ fontSize: 32, marginBottom: 12, opacity: .4 }}>◈</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--text2)', marginBottom: 6 }}>No ideas in allocation queue</div>
+          <div style={{ fontSize: 11, color: 'var(--text4)', marginBottom: 16 }}>
+            {availableIdeas.length > 0 ? 'Select approved ideas above to add them to the queue.' : 'Approve ideas in the committee workflow to enable allocation.'}
+          </div>
+          {availableIdeas.length > 0 && (
+            <button onClick={() => setShowAddForm(true)} className="btn btn-primary btn-sm">+ Add to Queue</button>
+          )}
         </div>
       ) : (
-        <div className="panel">
-          <table className="tbl w-full">
-            <thead>
-              <tr>
-                <th className="w-10">Rank</th>
-                <th>Idea</th>
-                <th>Score</th>
-                <th>Capital</th>
-                <th>Risk</th>
-                <th>Status</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999)).map(entry => (
-                <tr key={entry.id}>
-                  <td className="font-mono text-[var(--text4)] text-center">{entry.rank ?? '—'}</td>
-                  <td>
-                    {entry.idea ? (
-                      <div>
-                        <Link href={`/dashboard/committee/${entry.ideaId}`}
-                          className="font-mono font-bold hover:text-[var(--accent)]">
-                          {entry.idea.ticker}
-                        </Link>
-                        <span className={`badge ml-2 ${entry.idea.dir === 'LONG' ? 'badge-long' : 'badge-short'}`}>
-                          {entry.idea.dir}
-                        </span>
-                        {entry.notes && (
-                          <div className="text-xs text-[var(--text4)] truncate max-w-48 mt-0.5">{entry.notes}</div>
-                        )}
-                      </div>
-                    ) : <span className="text-[var(--text4)]">—</span>}
-                  </td>
-                  <td className="font-mono">
-                    {entry.idea?.finalScore?.toFixed(1) ?? '—'}
-                    <div className="text-xs text-[var(--text4)]">
-                      PM {entry.idea?.pmScore?.toFixed(1) ?? '—'}
-                    </div>
-                  </td>
-                  <td className="font-mono text-sm">
-                    {entry.capitalRequested ? `$${entry.capitalRequested.toLocaleString()}` : '—'}
-                    {entry.portfolioExposurePct && (
-                      <div className="text-xs text-[var(--text4)]">{entry.portfolioExposurePct.toFixed(1)}% AUM</div>
-                    )}
-                  </td>
-                  <td>
-                    <span className={`badge ${
-                      entry.riskRating === 'HIGH' ? 'badge-short' :
-                      entry.riskRating === 'LOW' ? 'badge-long' : 'badge-warn'
-                    }`}>{entry.riskRating}</span>
-                  </td>
-                  <td>
-                    <select value={entry.status}
-                      onChange={e => updateStatus(entry.ideaId, e.target.value)}
-                      className="inp text-xs py-0.5 px-1">
-                      {['PENDING', 'IN_PROGRESS', 'ALLOCATED', 'ON_HOLD', 'CANCELLED'].map(s => (
-                        <option key={s} value={s}>{s.replace('_', ' ')}</option>
-                      ))}
-                    </select>
-                  </td>
-                  <td>
-                    <div className="flex gap-1">
-                      <Link href={`/dashboard/trades?ideaId=${entry.ideaId}`} className="btn btn-ghost btn-sm">
-                        Trade
-                      </Link>
-                      <button onClick={() => removeFromQueue(entry.ideaId)}
-                        className="btn btn-danger btn-sm">×</button>
-                    </div>
-                  </td>
+        <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, overflow: 'hidden', boxShadow: 'var(--shadow)' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--panel2)' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text3)', letterSpacing: '.06em', textTransform: 'uppercase' }}>
+              {entries.length} idea{entries.length !== 1 ? 's' : ''} in queue
+            </span>
+            <span style={{ fontSize: 10, color: 'var(--text4)', fontFamily: 'var(--mono)' }}>
+              Total capital: ${totalCapital.toLocaleString()}
+            </span>
+          </div>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="tbl" style={{ minWidth: 760 }}>
+              <thead>
+                <tr>
+                  <th style={{ width: 40 }}>Rank</th>
+                  <th>Idea</th>
+                  <th>Score</th>
+                  <th>Capital</th>
+                  <th>Exposure</th>
+                  <th>Risk</th>
+                  <th>Status</th>
+                  <th style={{ width: 140 }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sorted.map((entry, i) => {
+                  const rc = entry.riskRating ? RISK_CONFIG[entry.riskRating] : RISK_CONFIG.MEDIUM;
+                  const idea = entry.idea;
+                  const isHighRisk = entry.riskRating === 'HIGH';
+
+                  return (
+                    <tr key={entry.id} style={{ background: isHighRisk ? 'rgba(220,38,38,.018)' : undefined }}>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{
+                          width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          background: i === 0 ? 'var(--accent)' : i === 1 ? 'rgba(37,99,235,.12)' : 'var(--bg)',
+                          color: i === 0 ? '#fff' : 'var(--text3)',
+                          fontSize: 10, fontWeight: 700, fontFamily: 'var(--mono)', margin: 'auto',
+                          border: i > 0 ? '1px solid var(--border)' : 'none',
+                        }}>{entry.rank ?? i + 1}</div>
+                      </td>
+                      <td>
+                        {idea ? (
+                          <div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
+                              <Link href={`/dashboard/committee/${entry.ideaId}`} style={{ fontFamily: 'var(--mono)', fontWeight: 800, fontSize: 13, color: 'var(--text)', textDecoration: 'none' }}
+                                onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--accent)'}
+                                onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--text)'}
+                              >{idea.ticker}</Link>
+                              <span className={`badge ${idea.dir === 'LONG' ? 'badge-long' : 'badge-short'}`}>{idea.dir}</span>
+                            </div>
+                            {entry.notes && (
+                              <div style={{ fontSize: 9, color: 'var(--text4)', maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{entry.notes}</div>
+                            )}
+                          </div>
+                        ) : <span style={{ color: 'var(--text4)' }}>—</span>}
+                      </td>
+                      <td>
+                        <div style={{ fontFamily: 'var(--mono)', fontSize: 13, fontWeight: 700, color: 'var(--text)' }}>
+                          {idea?.finalScore?.toFixed(1) ?? '—'}
+                        </div>
+                        <div style={{ fontSize: 9, color: 'var(--text4)', marginTop: 1 }}>PM {idea?.pmScore?.toFixed(1) ?? '—'}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 12 }}>
+                          {entry.capitalRequested ? `$${entry.capitalRequested.toLocaleString()}` : '—'}
+                        </div>
+                        {entry.recommendedAlloc && (
+                          <div style={{ fontSize: 9, color: 'var(--long)' }}>Rec: ${entry.recommendedAlloc.toLocaleString()}</div>
+                        )}
+                      </td>
+                      <td>
+                        {entry.portfolioExposurePct ? (
+                          <div>
+                            <div style={{ fontFamily: 'var(--mono)', fontSize: 12 }}>{entry.portfolioExposurePct.toFixed(1)}%</div>
+                            <div style={{ height: 3, width: 60, background: 'var(--border)', borderRadius: 3, marginTop: 3 }}>
+                              <div style={{ height: '100%', width: `${Math.min(100, entry.portfolioExposurePct * 5)}%`, background: entry.portfolioExposurePct > 10 ? 'var(--short)' : entry.portfolioExposurePct > 5 ? 'var(--warn)' : 'var(--long)', borderRadius: 3 }} />
+                            </div>
+                          </div>
+                        ) : <span style={{ color: 'var(--text4)' }}>—</span>}
+                      </td>
+                      <td>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: rc.color, background: rc.bg, border: `1px solid ${rc.border}`, padding: '2px 7px', borderRadius: 4, fontFamily: 'var(--mono)' }}>
+                          {rc.label.toUpperCase()}
+                        </span>
+                      </td>
+                      <td>
+                        <select value={entry.status} onChange={e => updateStatus(entry.ideaId, e.target.value)}
+                          className="inp" style={{ fontSize: 10, padding: '3px 6px', width: '100%' }}>
+                          {STATUS_OPTS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
+                        </select>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', gap: 4 }}>
+                          <Link href={`/dashboard/trades?ideaId=${entry.ideaId}`} className="btn btn-ghost btn-sm" style={{ fontSize: 9, padding: '3px 8px' }}>
+                            Trade
+                          </Link>
+                          <button onClick={() => removeFromQueue(entry.ideaId)} className="btn btn-danger btn-sm" style={{ fontSize: 9, padding: '3px 8px' }}>
+                            ✕
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </div>
