@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
 import type { Watchlist } from '@/lib/types';
+import TickerSearch from '@/components/ui/TickerSearch';
 
 const PRESET_COLORS = ['#2563EB', '#7C3AED', '#16A34A', '#D97706', '#DC2626', '#0891B2', '#BE185D'];
 
@@ -162,11 +163,14 @@ export default function WatchlistsPage() {
 
           {/* Add ticker */}
           {selected.ownerId === user?.legacyId && (
-            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8 }}>
-              <input className="inp" placeholder="Ticker (e.g. NVDA)" value={newTicker}
-                onChange={e => setNewTicker(e.target.value.toUpperCase())}
-                onKeyDown={e => { if (e.key === 'Enter') addTicker(); }}
-                style={{ width: 120 }} />
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center' }}>
+              <div style={{ width: 200 }}>
+                <TickerSearch
+                  value={newTicker}
+                  onSelect={(ticker) => setNewTicker(ticker)}
+                  placeholder="Search ticker…"
+                />
+              </div>
               <input className="inp" placeholder="Notes (optional)" value={newTickerNote}
                 onChange={e => setNewTickerNote(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter') addTicker(); }}

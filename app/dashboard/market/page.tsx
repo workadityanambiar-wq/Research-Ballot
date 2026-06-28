@@ -205,7 +205,7 @@ function ResearchCard({ idea, voteMap, userId, canVote, onAllocate, idx }: {
     >
       {/* Hero chart */}
       <div style={{ position: 'relative', height: 195, background: 'var(--panel2)', overflow: 'hidden', flexShrink: 0 }}>
-        <div className="research-card-inner" style={{ width: '100%', height: '100%' }}>
+        <div className="research-card-inner" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }}>
           <MiniChart idea={idea} />
         </div>
         {/* fade-out to card body */}

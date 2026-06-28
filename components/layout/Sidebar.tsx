@@ -19,7 +19,7 @@ const NAV: NavEntry[] = [
   { section: 'VOTING', key: 'voting', defaultOpen: true },
   { id: 'ballot', label: 'Weekly Ballot', icon: '☑', href: '/dashboard/ballot' },
   { id: 'submit', label: 'Submit Idea', icon: '✦', href: '/dashboard/submit' },
-  { id: 'market', label: 'Credit Market', icon: '◈', href: '/dashboard/market' },
+  { id: 'market', label: 'Trade', icon: '◈', href: '/dashboard/market' },
   { id: 'rankings', label: 'Trade Rankings', icon: '◉', href: '/dashboard/rankings' },
   { section: 'COMMITTEE', key: 'committee', defaultOpen: true },
   { id: 'committee', label: 'Committee Hub', icon: '⬡', href: '/dashboard/committee' },

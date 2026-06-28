@@ -7,9 +7,23 @@ import { Sparkline, Donut } from '@/components/ui/Charts';
 import { useState, useEffect } from 'react';
 import type { AuditEntry } from '@/lib/types';
 
+interface Mt5Health {
+  status: string;
+  mt5_connected: boolean;
+  server?: string;
+  account?: number;
+  balance?: number;
+  equity?: number;
+  margin?: number;
+  margin_level?: number;
+  currency?: string;
+}
+
 export default function DashboardPage() {
   const { user, ideas, portfolio, votes } = useApp();
   const [recentAudit, setRecentAudit] = useState<AuditEntry[]>([]);
+  const [mt5, setMt5] = useState<Mt5Health | null>(null);
+  const [mt5Loading, setMt5Loading] = useState(true);
 
   useEffect(() => {
     if (user?.role === 'CIO') {
@@ -19,6 +33,14 @@ export default function DashboardPage() {
         .catch(() => {});
     }
   }, [user?.role]);
+
+  useEffect(() => {
+    if (!user) return;
+    fetch('/api/mt5/health')
+      .then(r => r.json())
+      .then(d => { setMt5(d); setMt5Loading(false); })
+      .catch(() => { setMt5({ status: 'disconnected', mt5_connected: false }); setMt5Loading(false); });
+  }, [user]);
 
   if (!user) return null;
 
@@ -48,6 +70,83 @@ export default function DashboardPage() {
         <StatCard label="Active Ideas" value={ideas.length} sub="W26-2025 cycle" />
         <StatCard label="Market Credits" value={totalCredits.toLocaleString()} sub="Total allocated" />
         <StatCard label="Analysts Active" value="14/16" color="var(--accent)" sub="2 inactive" />
+      </div>
+
+      {/* MT5 Connection widget */}
+      <div className="panel" style={{ padding: '10px 14px', marginBottom: 10, display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{
+            width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
+            background: mt5Loading ? 'var(--text4)' : mt5?.mt5_connected ? 'var(--long)' : 'var(--short)',
+            boxShadow: mt5?.mt5_connected ? '0 0 6px var(--long)' : undefined,
+          }} />
+          <span style={{ fontSize: 11, fontWeight: 700, color: 'var(--text)', fontFamily: 'var(--mono)', letterSpacing: '.04em' }}>
+            MT5
+          </span>
+          <span style={{ fontSize: 10, color: mt5?.mt5_connected ? 'var(--long)' : 'var(--text4)', fontWeight: 600 }}>
+            {mt5Loading ? 'Checking…' : mt5?.mt5_connected ? 'CONNECTED' : 'DISCONNECTED'}
+          </span>
+        </div>
+
+        {mt5?.mt5_connected && (
+          <>
+            <div style={{ width: 1, height: 28, background: 'var(--border)' }} />
+            {mt5.server && (
+              <div>
+                <div style={{ fontSize: 8, color: 'var(--text4)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 1 }}>Server</div>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--text)' }}>{mt5.server}</div>
+              </div>
+            )}
+            {mt5.account && (
+              <div>
+                <div style={{ fontSize: 8, color: 'var(--text4)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 1 }}>Account</div>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--text)' }}>{mt5.account}</div>
+              </div>
+            )}
+            {mt5.equity != null && (
+              <div>
+                <div style={{ fontSize: 8, color: 'var(--text4)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 1 }}>Equity</div>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--long)', fontWeight: 700 }}>{mt5.currency ?? '$'}{mt5.equity.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              </div>
+            )}
+            {mt5.balance != null && (
+              <div>
+                <div style={{ fontSize: 8, color: 'var(--text4)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 1 }}>Balance</div>
+                <div className="mono" style={{ fontSize: 10, color: 'var(--text)' }}>{mt5.currency ?? '$'}{mt5.balance.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+              </div>
+            )}
+            {mt5.margin_level != null && (
+              <div>
+                <div style={{ fontSize: 8, color: 'var(--text4)', letterSpacing: '.06em', textTransform: 'uppercase', marginBottom: 1 }}>Margin Level</div>
+                <div className="mono" style={{ fontSize: 10, color: mt5.margin_level > 200 ? 'var(--long)' : mt5.margin_level > 100 ? 'var(--warn)' : 'var(--short)', fontWeight: 700 }}>
+                  {mt5.margin_level.toFixed(1)}%
+                </div>
+              </div>
+            )}
+          </>
+        )}
+
+        {!mt5Loading && !mt5?.mt5_connected && (
+          <>
+            <div style={{ width: 1, height: 28, background: 'var(--border)' }} />
+            <span style={{ fontSize: 10, color: 'var(--text4)' }}>
+              MT5 service offline — start the Python MT5 service to enable live quotes and quant scoring.
+            </span>
+            <button
+              className="btn btn-ghost btn-sm"
+              style={{ marginLeft: 'auto', fontSize: 9 }}
+              onClick={() => {
+                setMt5Loading(true);
+                fetch('/api/mt5/health')
+                  .then(r => r.json())
+                  .then(d => { setMt5(d); setMt5Loading(false); })
+                  .catch(() => { setMt5({ status: 'disconnected', mt5_connected: false }); setMt5Loading(false); });
+              }}
+            >
+              RETRY
+            </button>
+          </>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
