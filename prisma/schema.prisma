@@ -194,6 +194,15 @@ enum AuditAction {
   TRADE_ALERT_CREATED
   TRADE_JOURNAL_UPDATED
   TRADE_CANCELLED
+  COMMITTEE_QUESTION_RAISED
+  COMMITTEE_CHALLENGE_RAISED
+  COMMITTEE_CHALLENGE_RESOLVED
+  VOTE_JUSTIFICATION_SUBMITTED
+  MEETING_CREATED
+  MEETING_COMPLETED
+  ALLOCATION_QUEUE_UPDATED
+  RESEARCH_REVISION_SUBMITTED
+  DECISION_PACKAGE_GENERATED
 }
 
 enum RiskLevel {
@@ -236,12 +245,13 @@ model ResearchDoc {
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
 
-  versions    ResearchVersion[]
-  catalysts   ResearchCatalyst[]
-  risks       ResearchRisk[]
-  attachments ResearchAttachment[]
-  references  ResearchReference[]
-  comments    ResearchComment[]
+  versions        ResearchVersion[]
+  catalysts       ResearchCatalyst[]
+  risks           ResearchRisk[]
+  attachments     ResearchAttachment[]
+  references      ResearchReference[]
+  comments        ResearchComment[]
+  revisionRecords ResearchRevisionRecord[]
 
   @@index([authorId])
   @@index([status])
@@ -457,10 +467,16 @@ model Idea {
   earningRevScore Float          @default(0)
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
-  allocations     Allocation[]
-  researchDoc     ResearchDoc?
-  postMortem      PostMortem?
-  trades          Trade[]
+  allocations        Allocation[]
+  researchDoc        ResearchDoc?
+  postMortem         PostMortem?
+  trades             Trade[]
+  meetingItems       MeetingAgendaItem[]
+  questions          CommitteeQuestion[]
+  challenges         CommitteeChallenge[]
+  voteJustifications VoteJustification[]
+  allocationQueue    AllocationQueueEntry?
+  decisionPackages   DecisionPackage[]
 
   @@index([weekId])
   @@index([authorId])
@@ -697,4 +713,156 @@ model PerformanceAttribution {
   cioComment       String?   @db.Text
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+}
+
+// ──────────────────────────────────────────────
+// Phase 5 — Investment Decision Engine
+// ──────────────────────────────────────────────
+
+model CommitteeMeeting {
+  id          String   @id @default(cuid())
+  title       String
+  meetingDate DateTime
+  agenda      String?  @db.Text
+  notes       String?  @db.Text
+  decisions   String?  @db.Text
+  status      String   @default("SCHEDULED")
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  agendaItems MeetingAgendaItem[]
+  attendance  MeetingAttendance[]
+
+  @@index([meetingDate])
+  @@index([status])
+}
+
+model MeetingAgendaItem {
+  id        String           @id @default(cuid())
+  meetingId String
+  meeting   CommitteeMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  ideaId    String
+  idea      Idea             @relation(fields: [ideaId], references: [id])
+  sortOrder Int              @default(0)
+  notes     String?
+  duration  Int?
+  createdAt DateTime         @default(now())
+
+  @@unique([meetingId, ideaId])
+  @@index([meetingId])
+  @@index([ideaId])
+}
+
+model MeetingAttendance {
+  id        String           @id @default(cuid())
+  meetingId String
+  meeting   CommitteeMeeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  userId    String
+  attended  Boolean          @default(true)
+  role      String?
+  createdAt DateTime         @default(now())
+
+  @@unique([meetingId, userId])
+  @@index([meetingId])
+}
+
+model CommitteeQuestion {
+  id         String    @id @default(cuid())
+  ideaId     String
+  idea       Idea      @relation(fields: [ideaId], references: [id])
+  raisedBy   String
+  assignedTo String?
+  question   String    @db.Text
+  answer     String?   @db.Text
+  status     String    @default("OPEN")
+  priority   String    @default("MEDIUM")
+  answeredBy String?
+  answeredAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([ideaId])
+  @@index([status])
+}
+
+model CommitteeChallenge {
+  id          String    @id @default(cuid())
+  ideaId      String
+  idea        Idea      @relation(fields: [ideaId], references: [id])
+  raisedBy    String
+  category    String
+  description String    @db.Text
+  evidence    String?   @db.Text
+  priority    String    @default("MEDIUM")
+  status      String    @default("OPEN")
+  resolution  String?   @db.Text
+  resolvedBy  String?
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([ideaId])
+  @@index([status])
+}
+
+model VoteJustification {
+  id              String   @id @default(cuid())
+  ideaId          String
+  idea            Idea     @relation(fields: [ideaId], references: [id])
+  userId          String
+  decision        String
+  summary         String   @db.Text
+  keyStrengths    String?  @db.Text
+  keyConcerns     String?  @db.Text
+  conditions      String?  @db.Text
+  additionalNotes String?  @db.Text
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@unique([ideaId, userId])
+  @@index([ideaId])
+}
+
+model ResearchRevisionRecord {
+  id          String      @id @default(cuid())
+  docId       String
+  doc         ResearchDoc @relation(fields: [docId], references: [id], onDelete: Cascade)
+  revisionNum Int
+  summary     String      @db.Text
+  changes     String?     @db.Text
+  submittedBy String
+  createdAt   DateTime    @default(now())
+
+  @@index([docId])
+}
+
+model AllocationQueueEntry {
+  id                  String   @id @default(cuid())
+  ideaId              String   @unique
+  idea                Idea     @relation(fields: [ideaId], references: [id])
+  rank                Int?
+  capitalRequested    Float?
+  recommendedAlloc    Float?
+  portfolioExposurePct Float?
+  riskRating          String   @default("MEDIUM")
+  status              String   @default("PENDING")
+  notes               String?  @db.Text
+  updatedBy           String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  @@index([status])
+}
+
+model DecisionPackage {
+  id          String   @id @default(cuid())
+  ideaId      String
+  idea        Idea     @relation(fields: [ideaId], references: [id])
+  version     Int      @default(1)
+  generatedBy String
+  content     String   @db.Text
+  createdAt   DateTime @default(now())
+
+  @@index([ideaId])
 }
