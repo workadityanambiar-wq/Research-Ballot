@@ -17,6 +17,10 @@ type Meeting = {
 
 type IdeaOption = { id: string; ticker: string; dir: string; finalScore: number | null };
 
+const STATUS_BADGE: Record<string, string> = {
+  COMPLETED: 'badge-long', IN_PROGRESS: 'badge-warn', SCHEDULED: 'badge-accent', CANCELLED: 'badge-dim',
+};
+
 export default function MeetingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [meeting, setMeeting] = useState<Meeting | null>(null);
@@ -87,87 +91,97 @@ export default function MeetingDetailPage({ params }: { params: Promise<{ id: st
     load();
   };
 
-  if (loading) return <div className="p-8 text-[var(--text3)]">Loading meeting…</div>;
-  if (!meeting) return <div className="p-8 text-[var(--text4)]">Meeting not found</div>;
+  if (loading) return (
+    <div style={{ padding: 32, color: 'var(--text3)', fontFamily: 'var(--mono)', fontSize: 12 }}>LOADING MEETING…</div>
+  );
+  if (!meeting) return (
+    <div style={{ padding: 32, color: 'var(--text4)', fontSize: 13 }}>Meeting not found</div>
+  );
 
   const meetingDate = new Date(meeting.meetingDate);
-  const isPast = meetingDate < new Date();
   const agendaIdeaIds = new Set(meeting.agendaItems.map(a => a.idea?.id).filter(Boolean));
   const availableIdeas = ideas.filter(i => !agendaIdeaIds.has(i.id));
 
   return (
-    <div className="p-6 space-y-5 max-w-5xl mx-auto">
-      <div className="flex items-start justify-between">
+    <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <Link href="/dashboard/committee/meetings" className="text-[var(--text4)] text-sm hover:text-[var(--text)]">
-              ← Meetings
-            </Link>
-          </div>
-          <h1 className="text-xl font-bold">{meeting.title}</h1>
-          <div className="text-[var(--text3)] text-sm mt-0.5">
+          <Link href="/dashboard/committee/meetings" style={{ fontSize: 11, color: 'var(--text4)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 6, textDecoration: 'none' }}
+            onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--text)'}
+            onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--text4)'}>
+            ← Meetings
+          </Link>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>{meeting.title}</h1>
+          <div style={{ fontSize: 12, color: 'var(--text3)' }}>
             {meetingDate.toLocaleDateString('en', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-            {' at '}{meetingDate.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
+            {' at '}
+            {meetingDate.toLocaleTimeString('en', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <span className={`badge ${
-            meeting.status === 'COMPLETED' ? 'badge-long' :
-            meeting.status === 'IN_PROGRESS' ? 'badge-warn' :
-            meeting.status === 'SCHEDULED' ? 'badge-accent' : 'badge-dim'
-          }`}>{meeting.status}</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span className={`badge ${STATUS_BADGE[meeting.status] ?? 'badge-dim'}`}>{meeting.status.replace('_', ' ')}</span>
           {meeting.status === 'SCHEDULED' && (
-            <button onClick={() => updateStatus('IN_PROGRESS')} className="btn btn-primary btn-sm">Start Meeting</button>
+            <button className="btn btn-primary btn-sm" onClick={() => updateStatus('IN_PROGRESS')}>Start Meeting</button>
           )}
           {meeting.status === 'IN_PROGRESS' && (
-            <button onClick={() => updateStatus('COMPLETED')} className="btn btn-primary btn-sm">Complete</button>
+            <button className="btn btn-primary btn-sm" onClick={() => updateStatus('COMPLETED')}>Complete</button>
           )}
-          <button onClick={joinMeeting} disabled={joiningMeeting} className="btn btn-ghost btn-sm">
+          <button className="btn btn-ghost btn-sm" onClick={joinMeeting} disabled={joiningMeeting}>
             {joiningMeeting ? 'Joining…' : 'Join'}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Left: Agenda */}
-        <div className="lg:col-span-2 space-y-4">
-          <div className="panel p-4">
-            <div className="sec-title mb-3">Agenda Items</div>
+      {/* Body: two-column */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, alignItems: 'start' }}>
+        {/* Left column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Agenda items */}
+          <div className="panel" style={{ padding: 16 }}>
+            <div className="sec-title" style={{ marginBottom: 12 }}>Agenda Items</div>
             {meeting.agendaItems.length === 0 ? (
-              <div className="text-center text-[var(--text4)] py-6">No agenda items yet</div>
+              <div style={{ textAlign: 'center', color: 'var(--text4)', padding: '24px 0', fontSize: 12 }}>No agenda items yet</div>
             ) : (
-              <div className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {meeting.agendaItems.map((item, idx) => (
-                  <div key={item.id} className="flex items-center gap-3 p-3 rounded-lg bg-[var(--panel2)]">
-                    <div className="text-[var(--text4)] font-mono text-sm w-5">{idx + 1}</div>
+                  <div key={item.id} style={{
+                    display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px',
+                    borderRadius: 6, background: 'var(--panel2)', border: '1px solid var(--border)',
+                  }}>
+                    <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text4)', width: 18, flexShrink: 0 }}>{idx + 1}</span>
                     {item.idea ? (
                       <>
                         <Link href={`/dashboard/committee/${item.idea.id}`}
-                          className="font-mono font-bold hover:text-[var(--accent)]">{item.idea.ticker}</Link>
-                        <span className={`badge ${item.idea.dir === 'LONG' ? 'badge-long' : 'badge-short'}`}>
-                          {item.idea.dir}
-                        </span>
-                        <span className="text-sm text-[var(--text3)]">
-                          Score: {item.idea.finalScore?.toFixed(1) ?? '—'}
-                        </span>
-                        <span className={`badge ml-auto ${
+                          style={{ fontFamily: 'var(--mono)', fontWeight: 700, fontSize: 13, color: 'var(--text)', textDecoration: 'none' }}
+                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--accent)'}
+                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--text)'}>
+                          {item.idea.ticker}
+                        </Link>
+                        <span className={`badge badge-${item.idea.dir === 'LONG' ? 'long' : 'short'}`}>{item.idea.dir}</span>
+                        <span style={{ fontSize: 11, color: 'var(--text3)' }}>Score: {item.idea.finalScore?.toFixed(1) ?? '—'}</span>
+                        <span className={`badge ${
                           item.idea.approvalStatus === 'APPROVED' ? 'badge-long' :
                           item.idea.approvalStatus === 'REJECTED' ? 'badge-short' : 'badge-accent'
-                        }`}>{item.idea.approvalStatus}</span>
+                        }`} style={{ marginLeft: 'auto' }}>{item.idea.approvalStatus}</span>
                       </>
                     ) : (
-                      <span className="text-[var(--text4)] text-sm">Idea not found</span>
+                      <span style={{ fontSize: 11, color: 'var(--text4)' }}>Idea not found</span>
                     )}
-                    {item.duration && <span className="text-xs text-[var(--text4)] ml-1">{item.duration}min</span>}
+                    {item.duration && (
+                      <span style={{ fontSize: 10, color: 'var(--text4)', marginLeft: item.idea ? 0 : 'auto' }}>{item.duration}min</span>
+                    )}
                     <button onClick={() => removeAgendaItem(item.id)}
-                      className="ml-auto text-[var(--text4)] hover:text-red-500 text-sm">×</button>
+                      style={{ marginLeft: item.idea ? 0 : 'auto', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text4)', fontSize: 16, lineHeight: 1, padding: '0 2px' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--short)'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.color = 'var(--text4)'}>×</button>
                   </div>
                 ))}
               </div>
             )}
             {availableIdeas.length > 0 && (
-              <div className="flex gap-2 mt-3">
-                <select value={selectedIdea} onChange={e => setSelectedIdea(e.target.value)} className="inp flex-1 text-sm">
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <select value={selectedIdea} onChange={e => setSelectedIdea(e.target.value)} className="inp" style={{ flex: 1 }}>
                   <option value="">Add idea to agenda…</option>
                   {availableIdeas.map(i => (
                     <option key={i.id} value={i.id}>
@@ -175,42 +189,60 @@ export default function MeetingDetailPage({ params }: { params: Promise<{ id: st
                     </option>
                   ))}
                 </select>
-                <button onClick={addAgendaItem} disabled={addingItem || !selectedIdea} className="btn btn-primary btn-sm">
-                  Add
-                </button>
+                <button className="btn btn-primary btn-sm" onClick={addAgendaItem} disabled={addingItem || !selectedIdea}>Add</button>
               </div>
             )}
           </div>
 
-          <div className="panel p-4 space-y-3">
-            <div className="sec-title">Meeting Notes</div>
-            <textarea value={notes} onChange={e => setNotes(e.target.value)} className="inp w-full" rows={5}
-              placeholder="Meeting notes, discussion points, action items…" />
-            <div className="sec-title">Decisions</div>
-            <textarea value={decisions} onChange={e => setDecisions(e.target.value)} className="inp w-full" rows={4}
-              placeholder="Final decisions and outcomes…" />
-            <button onClick={saveNotes} disabled={saving} className="btn btn-primary btn-sm">
+          {/* Notes & Decisions */}
+          <div className="panel" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 12 }}>
+            <div>
+              <div className="sec-title" style={{ marginBottom: 6 }}>Meeting Notes</div>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                className="inp"
+                rows={5}
+                placeholder="Meeting notes, discussion points, action items…"
+              />
+            </div>
+            <div>
+              <div className="sec-title" style={{ marginBottom: 6 }}>Decisions</div>
+              <textarea
+                value={decisions}
+                onChange={e => setDecisions(e.target.value)}
+                className="inp"
+                rows={4}
+                placeholder="Final decisions and outcomes…"
+              />
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={saveNotes} disabled={saving} style={{ alignSelf: 'flex-start' }}>
               {saving ? 'Saving…' : 'Save Notes'}
             </button>
           </div>
         </div>
 
-        {/* Right: Info */}
-        <div className="space-y-4">
-          <div className="panel p-4">
-            <div className="sec-title mb-3">Attendance ({meeting.attendance.length})</div>
+        {/* Right column */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+          {/* Attendance */}
+          <div className="panel" style={{ padding: 16 }}>
+            <div className="sec-title" style={{ marginBottom: 12 }}>Attendance ({meeting.attendance.length})</div>
             {meeting.attendance.length === 0 ? (
-              <div className="text-[var(--text4)] text-sm">No attendees yet</div>
+              <div style={{ fontSize: 12, color: 'var(--text4)' }}>No attendees yet</div>
             ) : (
-              <div className="space-y-2">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                 {meeting.attendance.map(a => (
-                  <div key={a.id} className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-[var(--accent)] text-white text-xs flex items-center justify-center font-bold">
+                  <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 28, height: 28, borderRadius: '50%', background: 'var(--accent)',
+                      color: '#fff', fontSize: 11, display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', fontWeight: 700, flexShrink: 0,
+                    }}>
                       {a.userId.slice(0, 1).toUpperCase()}
                     </div>
                     <div>
-                      <div className="text-sm font-medium">{a.userId}</div>
-                      <div className="text-xs text-[var(--text4)]">{a.role}</div>
+                      <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)' }}>{a.userId}</div>
+                      <div style={{ fontSize: 10, color: 'var(--text4)' }}>{a.role}</div>
                     </div>
                   </div>
                 ))}
@@ -218,17 +250,19 @@ export default function MeetingDetailPage({ params }: { params: Promise<{ id: st
             )}
           </div>
 
+          {/* Pre-meeting agenda */}
           {meeting.agenda && (
-            <div className="panel p-4">
-              <div className="sec-title mb-2">Pre-meeting Agenda</div>
-              <div className="text-sm text-[var(--text2)] whitespace-pre-wrap">{meeting.agenda}</div>
+            <div className="panel" style={{ padding: 16 }}>
+              <div className="sec-title" style={{ marginBottom: 8 }}>Pre-meeting Agenda</div>
+              <div style={{ fontSize: 12, color: 'var(--text2)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{meeting.agenda}</div>
             </div>
           )}
 
+          {/* Decisions summary */}
           {meeting.decisions && (
-            <div className="panel p-4 border-l-2 border-[var(--long)]">
-              <div className="sec-title mb-2">Decisions</div>
-              <div className="text-sm text-[var(--text2)] whitespace-pre-wrap">{meeting.decisions}</div>
+            <div className="panel" style={{ padding: 16, borderLeft: '3px solid var(--long)' }}>
+              <div className="sec-title" style={{ marginBottom: 8 }}>Decisions</div>
+              <div style={{ fontSize: 12, color: 'var(--text2)', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{meeting.decisions}</div>
             </div>
           )}
         </div>

@@ -107,6 +107,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [user, sessionLoading, refreshIdeas, refreshAllocations, refreshUsers, refreshPortfolio]);
 
+  // Auto-refresh: ideas + allocations every 2 min, portfolio every 5 min
+  useEffect(() => {
+    if (!user) return;
+    const ideasId = setInterval(() => { refreshIdeas(); refreshAllocations(); }, 2 * 60 * 1000);
+    return () => clearInterval(ideasId);
+  }, [user, refreshIdeas, refreshAllocations]);
+
+  useEffect(() => {
+    if (!user) return;
+    const portfolioId = setInterval(refreshPortfolio, 5 * 60 * 1000);
+    return () => clearInterval(portfolioId);
+  }, [user, refreshPortfolio]);
+
   useEffect(() => {
     if (users.length === 0) return;
     const baseIdeas = rawIdeas.length ? rawIdeas : IDEAS0;

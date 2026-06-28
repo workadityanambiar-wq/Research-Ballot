@@ -1,10 +1,12 @@
 'use client';
 import { useApp } from '@/context/AppContext';
+import { useDashboardKPIs } from '@/hooks/useLiveData';
 import { StatCard } from '@/components/ui/StatCard';
 import { Bar } from '@/components/ui/Bar';
 import { DirBadge, SevBadge } from '@/components/ui/Badge';
 import { Sparkline, Donut } from '@/components/ui/Charts';
 import { useState, useEffect } from 'react';
+import { WEEK_ID } from '@/lib/data';
 import type { AuditEntry } from '@/lib/types';
 
 interface Mt5Health {
@@ -19,8 +21,22 @@ interface Mt5Health {
   currency?: string;
 }
 
+const SECTOR_COLORS: Record<string, string> = {
+  Technology: 'var(--accent)',
+  Financials: 'var(--purple)',
+  Consumer: 'var(--long)',
+  Energy: 'var(--warn)',
+  Cash: 'var(--text4)',
+};
+
+function fmtReturn(val: number | null | undefined, fallback = '--'): string {
+  if (val == null) return fallback;
+  return (val >= 0 ? '+' : '') + val.toFixed(2) + '%';
+}
+
 export default function DashboardPage() {
-  const { user, ideas, portfolio, votes } = useApp();
+  const { user, ideas, votes } = useApp();
+  const { data: kpis, loading: kpisLoading, error: kpisError } = useDashboardKPIs(WEEK_ID);
   const [recentAudit, setRecentAudit] = useState<AuditEntry[]>([]);
   const [mt5, setMt5] = useState<Mt5Health | null>(null);
   const [mt5Loading, setMt5Loading] = useState(true);
@@ -44,10 +60,22 @@ export default function DashboardPage() {
 
   if (!user) return null;
 
-  const perfData = [12, 14, 11, 16, 15, 18, 17, 19, 18, 21, 20, 22, 21, 23];
-  const sectorData = [{ val: 55, color: 'var(--accent)' }, { val: 16, color: 'var(--purple)' }, { val: 8, color: 'var(--long)' }, { val: 8, color: 'var(--warn)' }, { val: 13, color: 'var(--text4)' }];
-  const sectorLabels = ['Technology', 'Financials', 'Consumer', 'Energy', 'Cash'];
   const totalCredits = Object.values(votes).reduce((a, vobj) => a + Object.values(vobj).reduce((b, v) => b + v, 0), 0);
+
+  // Sector donut from live KPIs
+  const sectorSlices = (kpis?.sectorAllocation ?? [])
+    .filter(s => s.pct > 0)
+    .map(s => ({ val: s.pct, color: SECTOR_COLORS[s.sector] ?? 'var(--border2)' }));
+
+  const activeAnalysts = kpis?.activeAnalysts ?? 0;
+  const totalAnalysts = kpis?.totalAnalysts ?? 0;
+  const inactiveAnalysts = totalAnalysts - activeAnalysts;
+
+  const wtdReturn = fmtReturn(kpis?.portfolioReturnWtd);
+  const ytdReturn = fmtReturn(kpis?.ytdReturn);
+  const sharpeVal = kpis?.sharpe != null ? kpis.sharpe.toFixed(2) : '--';
+  const perfSeries = kpis?.performanceSeries ?? [];
+  const hasPerf = perfSeries.length >= 2;
 
   return (
     <div className="scroll-y" style={{ height: '100%', padding: 16 }}>
@@ -56,20 +84,38 @@ export default function DashboardPage() {
           <div style={{ fontSize: 16, fontWeight: 700, marginBottom: 2 }}>
             {user.role === 'CIO' ? 'Executive Dashboard' : 'Research Dashboard'}
           </div>
-          <div style={{ fontSize: 10, color: 'var(--text3)' }}>Week 26, 2025 · Cycle Active · {ideas.length} live ideas · {ideas.filter(i => i.approvalStatus === 'APPROVED').length} approved</div>
+          <div style={{ fontSize: 10, color: 'var(--text3)' }}>
+            {WEEK_ID} · Cycle Active · {ideas.length} live ideas · {ideas.filter(i => i.approvalStatus === 'APPROVED').length} approved
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          {kpisError && <span className="badge badge-warn" style={{ fontSize: 8 }}>METRICS OFFLINE</span>}
           <span className="badge badge-low pulse">LIVE</span>
-          <span className="badge badge-dim">W26-2025</span>
+          <span className="badge badge-dim">{WEEK_ID}</span>
         </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 12 }}>
-        <StatCard label="Portfolio Return (WTD)" value="+4.82%" color="var(--long)" sub="vs SPX +0.38%" />
-        <StatCard label="YTD Alpha" value="+18.34%" color="var(--long)" sub="Sharpe: 1.74" />
-        <StatCard label="Active Ideas" value={ideas.length} sub="W26-2025 cycle" />
+        <StatCard
+          label="Portfolio Return (WTD)"
+          value={kpisLoading ? '…' : wtdReturn}
+          color={kpis?.portfolioReturnWtd != null && kpis.portfolioReturnWtd >= 0 ? 'var(--long)' : kpis?.portfolioReturnWtd != null ? 'var(--short)' : 'var(--text)'}
+          sub={kpis?.dataSource === 'live' ? 'from snapshots' : 'no snapshot data'}
+        />
+        <StatCard
+          label="YTD Alpha"
+          value={kpisLoading ? '…' : ytdReturn}
+          color={kpis?.ytdReturn != null && kpis.ytdReturn >= 0 ? 'var(--long)' : 'var(--text)'}
+          sub={`Sharpe: ${sharpeVal}`}
+        />
+        <StatCard label="Active Ideas" value={ideas.length} sub={`${WEEK_ID} cycle`} />
         <StatCard label="Market Credits" value={totalCredits.toLocaleString()} sub="Total allocated" />
-        <StatCard label="Analysts Active" value="14/16" color="var(--accent)" sub="2 inactive" />
+        <StatCard
+          label="Analysts Active"
+          value={kpisLoading ? '…' : `${activeAnalysts}/${totalAnalysts}`}
+          color="var(--accent)"
+          sub={totalAnalysts > 0 ? `${inactiveAnalysts} inactive` : ''}
+        />
       </div>
 
       {/* MT5 Connection widget */}
@@ -151,7 +197,7 @@ export default function DashboardPage() {
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
         <div className="panel" style={{ padding: 12 }}>
-          <div className="sec-hdr" style={{ marginBottom: 8 }}><span className="sec-title">Top Ranked Ideas</span><span className="badge badge-accent">W26</span></div>
+          <div className="sec-hdr" style={{ marginBottom: 8 }}><span className="sec-title">Top Ranked Ideas</span><span className="badge badge-accent">{WEEK_ID.split('-')[0]}</span></div>
           {ideas.slice(0, 5).map((idea, i) => {
             const qs = idea.quantScore;
             const qColor = qs >= 80 ? 'var(--long)' : qs >= 70 ? 'var(--accent)' : qs >= 60 ? 'var(--warn)' : qs > 0 ? 'var(--short)' : 'var(--text4)';
@@ -172,26 +218,46 @@ export default function DashboardPage() {
 
         <div className="panel" style={{ padding: 12 }}>
           <div className="sec-hdr" style={{ marginBottom: 8 }}><span className="sec-title">Sector Exposure</span></div>
-          <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
-            <Donut data={sectorData} size={90} />
-            <div style={{ flex: 1 }}>
-              {sectorLabels.map((s, i) => (
-                <div key={s} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: sectorData[i].color, flexShrink: 0 }} />
-                  <span style={{ fontSize: 10, flex: 1, color: 'var(--text2)' }}>{s}</span>
-                  <span className="mono" style={{ fontSize: 10 }}>{sectorData[i].val}%</span>
-                </div>
-              ))}
+          {sectorSlices.length > 0 ? (
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+              <Donut data={sectorSlices} size={90} />
+              <div style={{ flex: 1 }}>
+                {(kpis?.sectorAllocation ?? []).filter(s => s.pct > 0).map(s => (
+                  <div key={s.sector} style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: SECTOR_COLORS[s.sector] ?? 'var(--border2)', flexShrink: 0 }} />
+                    <span style={{ fontSize: 10, flex: 1, color: 'var(--text2)' }}>{s.sector}</span>
+                    <span className="mono" style={{ fontSize: 10 }}>{s.pct}%</span>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
+          ) : (
+            <div style={{ padding: '16px 0', textAlign: 'center', color: 'var(--text4)', fontSize: 10 }}>
+              {kpisLoading ? 'Loading…' : 'No allocation data'}
+            </div>
+          )}
         </div>
 
         <div className="panel" style={{ padding: 12 }}>
-          <div className="sec-hdr" style={{ marginBottom: 8 }}><span className="sec-title">Portfolio Performance</span><span className="mono" style={{ fontSize: 10, color: 'var(--long)', fontWeight: 600 }}>+18.34% YTD</span></div>
-          <Sparkline data={perfData} w={220} h={80} color="var(--accent)" />
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-            <span style={{ fontSize: 9, color: 'var(--text4)' }}>JAN</span><span style={{ fontSize: 9, color: 'var(--text4)' }}>JUN</span>
+          <div className="sec-hdr" style={{ marginBottom: 8 }}>
+            <span className="sec-title">Portfolio Performance</span>
+            <span className="mono" style={{ fontSize: 10, color: kpis?.ytdReturn != null && kpis.ytdReturn >= 0 ? 'var(--long)' : 'var(--text4)', fontWeight: 600 }}>
+              {ytdReturn} YTD
+            </span>
           </div>
+          {hasPerf ? (
+            <>
+              <Sparkline data={perfSeries} w={220} h={80} color="var(--accent)" />
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                <span style={{ fontSize: 9, color: 'var(--text4)' }}>START</span>
+                <span style={{ fontSize: 9, color: 'var(--text4)' }}>NOW</span>
+              </div>
+            </>
+          ) : (
+            <div style={{ height: 80, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text4)', fontSize: 10 }}>
+              {kpisLoading ? 'Loading…' : 'No snapshot history — record PortfolioSnapshots to display chart'}
+            </div>
+          )}
         </div>
       </div>
 
