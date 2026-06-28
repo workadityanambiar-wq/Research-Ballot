@@ -37,7 +37,9 @@ export async function POST(req: NextRequest) {
 
     await prisma.passwordResetToken.create({ data: { userId: user.id, tokenHash, expiresAt } });
 
-    const resetUrl = `${process.env.APP_URL ?? 'http://localhost:3000'}/reset-password?token=${token}`;
+    const base = process.env.APP_URL
+      ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const resetUrl = `${base}/reset-password?token=${token}`;
     await sendPasswordResetEmail(user.email!, user.displayName, resetUrl);
     await prisma.auditLog.create({
       data: { userId: user.id, action: 'PASSWORD_RESET_REQUESTED', detail: `Reset link sent to ${user.email}`, risk: 'LOW' },
