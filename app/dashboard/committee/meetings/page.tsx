@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 type Meeting = {
   id: string; title: string; meetingDate: string; agenda: string | null;
@@ -105,6 +106,7 @@ function MeetingCard({ meeting, idx }: { meeting: Meeting; idx: number }) {
 }
 
 export default function MeetingsPage() {
+  const { cols } = useBreakpoint();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -145,10 +147,10 @@ export default function MeetingsPage() {
   const completed = meetings.filter(m => m.status === 'COMPLETED');
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: '18px 20px', background: 'var(--bg)' }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: '18px 20px', background: 'var(--bg)' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <Link href="/dashboard/committee" style={{ fontSize: 10, color: 'var(--text4)', fontWeight: 600, letterSpacing: '.04em', textDecoration: 'none' }}>← COMMITTEE</Link>
@@ -162,7 +164,7 @@ export default function MeetingsPage() {
       </div>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, marginBottom: 16 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8, marginBottom: 16 }}>
         {[
           { label: 'Total Meetings', value: meetings.length, color: 'var(--text2)', icon: '▦' },
           { label: 'Upcoming', value: upcoming.length, color: 'var(--accent)', icon: '◷' },
@@ -209,7 +211,7 @@ export default function MeetingsPage() {
       {showForm && (
         <div style={{ background: 'var(--panel)', border: '1px solid var(--border)', borderRadius: 10, padding: '16px', marginBottom: 16, boxShadow: 'var(--shadow)' }}>
           <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)', marginBottom: 12 }}>Schedule New Meeting</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(2, 2, 1)}, 1fr)`, gap: 10, marginBottom: 10 }}>
             <div>
               <div className="form-label">Meeting Title *</div>
               <input value={title} onChange={e => setTitle(e.target.value)} className="inp"
@@ -232,10 +234,10 @@ export default function MeetingsPage() {
       )}
 
       {/* Filter bar */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14, flexWrap: 'wrap' }}>
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search meetings…" className="inp"
           style={{ width: 200, fontSize: 11 }} />
-        <div style={{ display: 'flex', gap: 4 }}>
+        <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
           {[['ALL', 'All'], ['SCHEDULED', 'Scheduled'], ['IN_PROGRESS', 'In Progress'], ['COMPLETED', 'Completed'], ['CANCELLED', 'Cancelled']].map(([v, l]) => (
             <button key={v} onClick={() => setFilter(v)}
               className={filter === v ? 'btn btn-primary btn-sm' : 'btn btn-ghost btn-sm'}>

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import type { Watchlist } from '@/lib/types';
 import TickerSearch from '@/components/ui/TickerSearch';
 
@@ -8,6 +9,7 @@ const PRESET_COLORS = ['#2563EB', '#7C3AED', '#16A34A', '#D97706', '#DC2626', '#
 
 export default function WatchlistsPage() {
   const { user } = useApp();
+  const { isMobile } = useBreakpoint();
   const [watchlists, setWatchlists] = useState<Watchlist[]>([]);
   const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Watchlist | null>(null);
@@ -71,9 +73,9 @@ export default function WatchlistsPage() {
   };
 
   return (
-    <div style={{ display: 'flex', height: '100%' }}>
+    <div className="dash-content" style={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', height: '100%' }}>
       {/* Sidebar: watchlist list */}
-      <div style={{ width: 260, flexShrink: 0, borderRight: '1px solid var(--border)', display: 'flex', flexDirection: 'column', background: 'var(--panel)' }}>
+      <div style={{ width: isMobile ? '100%' : 260, flexShrink: 0, borderRight: isMobile ? 'none' : '1px solid var(--border)', borderBottom: isMobile ? '1px solid var(--border)' : 'none', display: 'flex', flexDirection: 'column', background: 'var(--panel)', maxHeight: isMobile ? 260 : undefined }}>
         <div style={{ padding: '14px 14px 10px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--text)' }}>Watchlists</span>
           <button className="btn btn-primary btn-sm" onClick={() => setShowCreate(!showCreate)}>+</button>
@@ -163,8 +165,8 @@ export default function WatchlistsPage() {
 
           {/* Add ticker */}
           {selected.ownerId === user?.legacyId && (
-            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center' }}>
-              <div style={{ width: 200 }}>
+            <div style={{ padding: '12px 20px', borderBottom: '1px solid var(--border)', display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ width: isMobile ? '100%' : 200 }}>
                 <TickerSearch
                   value={newTicker}
                   onSelect={(ticker) => setNewTicker(ticker)}
@@ -186,7 +188,7 @@ export default function WatchlistsPage() {
                 No tickers in this watchlist
               </div>
             ) : (
-              <table className="tbl">
+              <div className="tbl-wrap"><table className="tbl">
                 <thead>
                   <tr>
                     <th>TICKER</th>
@@ -213,7 +215,7 @@ export default function WatchlistsPage() {
                     </tr>
                   ))}
                 </tbody>
-              </table>
+              </table></div>
             )}
           </div>
         </div>

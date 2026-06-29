@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 type Analytics = {
   overview: { totalIdeas: number; approvedIdeas: number; rejectedIdeas: number; pendingIdeas: number; approvalRate: number };
@@ -34,6 +35,7 @@ const DECISION_COLOR: Record<string, string> = {
 };
 
 export default function CommitteeAnalyticsPage() {
+  const { cols, isMobile } = useBreakpoint();
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,9 +57,9 @@ export default function CommitteeAnalyticsPage() {
   const maxChallengeCategory = Math.max(...challenges.byCategory.map(c => c.count), 1);
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
+    <div className="scroll-y dash-content" style={{ flex: 1, padding: 20 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 2 }}>Committee Analytics</h1>
           <p style={{ fontSize: 12, color: 'var(--text3)' }}>Decision-making patterns and committee performance</p>
@@ -66,7 +68,7 @@ export default function CommitteeAnalyticsPage() {
       </div>
 
       {/* KPI row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10, marginBottom: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 10, marginBottom: 20 }}>
         {[
           { label: 'Total Ideas', value: overview.totalIdeas, color: 'var(--accent)' },
           { label: 'Approval Rate', value: `${overview.approvalRate}%`, color: 'var(--long)' },
@@ -81,7 +83,7 @@ export default function CommitteeAnalyticsPage() {
       </div>
 
       {/* Main grid */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 1)}, 1fr)`, gap: 14, marginBottom: 14 }}>
         {/* Decision breakdown */}
         <div className="panel" style={{ padding: 16 }}>
           <div className="sec-title" style={{ marginBottom: 14 }}>Decision Outcomes</div>
@@ -158,7 +160,7 @@ export default function CommitteeAnalyticsPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 2fr', gap: 14, marginBottom: 14 }}>
         {/* Challenge categories */}
         <div className="panel" style={{ padding: 16 }}>
           <div className="sec-title" style={{ marginBottom: 14 }}>Challenges by Category</div>

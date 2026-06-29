@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, use } from 'react';
 import Link from 'next/link';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 type AgendaItem = {
   id: string; sortOrder: number; duration: number | null; notes: string | null; createdAt: string;
@@ -23,6 +24,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function MeetingDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const { isMobile } = useBreakpoint();
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -103,9 +105,9 @@ export default function MeetingDetailPage({ params }: { params: Promise<{ id: st
   const availableIdeas = ideas.filter(i => !agendaIdeaIds.has(i.id));
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
+    <div className="scroll-y dash-content" style={{ flex: 1, padding: 20 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
         <div>
           <Link href="/dashboard/committee/meetings" style={{ fontSize: 11, color: 'var(--text4)', display: 'inline-flex', alignItems: 'center', gap: 4, marginBottom: 6, textDecoration: 'none' }}
             onMouseEnter={e => (e.currentTarget as HTMLElement).style.color = 'var(--text)'}
@@ -134,7 +136,7 @@ export default function MeetingDetailPage({ params }: { params: Promise<{ id: st
       </div>
 
       {/* Body: two-column */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, alignItems: 'start' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 280px', gap: 16, alignItems: 'start' }}>
         {/* Left column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           {/* Agenda items */}

@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 interface SearchResults {
   ideas: Array<{ id: string; ticker: string; dir: string; thesis: string; approvalStatus: string; authorId: string; finalScore: number }>;
@@ -15,6 +16,7 @@ const STATUS_BADGE: Record<string, string> = {
 
 export default function SearchPage() {
   const { user } = useApp();
+  const { cols } = useBreakpoint();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResults | null>(null);
   const [loading, setLoading] = useState(false);
@@ -37,7 +39,7 @@ export default function SearchPage() {
   if (!user) return null;
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div className="scroll-y dash-content" style={{ flex: 1, padding: 20, display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Search header */}
       <div>
         <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)', marginBottom: 4 }}>Institutional Search</h1>
@@ -65,7 +67,7 @@ export default function SearchPage() {
 
       {/* Results */}
       {!searched && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, maxWidth: 700 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 1)}, 1fr)`, gap: 12, maxWidth: 700 }}>
           {[
             { icon: '⬡', label: 'Research Docs', desc: 'Search across all research workspaces' },
             { icon: '✦', label: 'Investment Ideas', desc: 'Find ideas by ticker, thesis, or analyst' },

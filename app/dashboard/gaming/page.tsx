@@ -1,5 +1,6 @@
 'use client';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { SevBadge } from '@/components/ui/Badge';
 import { StatCard } from '@/components/ui/StatCard';
 import { Bar } from '@/components/ui/Bar';
@@ -7,8 +8,9 @@ import { NetworkGraph } from '@/components/ui/Charts';
 
 export default function GamingPage() {
   const { user, users, gamingFlags, votingIntegrity } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   if (!user || user.role !== 'CIO') return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+    <div className="dash-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <div className="panel" style={{ padding: 32, textAlign: 'center', maxWidth: 340 }}>
         <div style={{ fontSize: 28, marginBottom: 8 }}>⛔</div>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--short)' }}>ACCESS DENIED</div>
@@ -45,8 +47,8 @@ export default function GamingPage() {
   ];
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: 16 }}>
-      <div className="sec-hdr" style={{ marginBottom: 14 }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: 16 }}>
+      <div className="sec-hdr" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <div><div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Anti-Gaming Engine</div><div style={{ fontSize: 10, color: 'var(--text3)' }}>Behavioral surveillance · Collusion detection · Voting integrity · CIO eyes only</div></div>
         <div style={{ display: 'flex', gap: 8 }}>
           {highCount > 0 && <span className="badge badge-high pulse">{highCount} HIGH RISK</span>}
@@ -54,14 +56,14 @@ export default function GamingPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 8, marginBottom: 14 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)},1fr)`, gap: 8, marginBottom: 14 }}>
         <StatCard label="Active Flags" value={gamingFlags.length} color="var(--short)" sub="W26-2025" />
         <StatCard label="High Severity" value={highCount} color="var(--short)" sub="Require review" />
         <StatCard label="Avg Gaming Score" value={avgScore || '—'} color="var(--warn)" sub="/ 100" />
         <StatCard label="Voting Integrity" value={votingIntegrity.toFixed(1)} color="var(--accent)" sub="/ 100" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 340px', gap: 12 }}>
         <div className="panel">
           <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <span className="sec-title">BEHAVIORAL FLAGS</span>

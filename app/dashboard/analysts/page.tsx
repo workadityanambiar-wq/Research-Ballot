@@ -1,12 +1,14 @@
 'use client';
 import { useState } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { TierBadge } from '@/components/ui/Badge';
 import { Bar } from '@/components/ui/Bar';
 import { ROLE_COLOR, TIER_W, TIER_COLOR } from '@/lib/permissions';
 
 export default function AnalystsPage() {
   const { user, users, dataLoading } = useApp();
+  const { cols } = useBreakpoint();
   const [tab, setTab] = useState<'overview' | 'idea' | 'allocator'>('overview');
   if (!user) return null;
   if (dataLoading) return <div style={{ padding: 32, textAlign: 'center', color: 'var(--text4)', fontSize: 11 }}>Loading…</div>;
@@ -14,9 +16,9 @@ export default function AnalystsPage() {
   const allUsers = [...users].sort((a, b) => b.researchScore - a.researchScore);
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="dash-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: '16px 16px 0', borderBottom: '1px solid var(--border)' }}>
-        <div className="sec-hdr" style={{ marginBottom: 10 }}>
+        <div className="sec-hdr" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Analyst Quality Scoring</div>
             <div style={{ fontSize: 10, color: 'var(--text3)' }}>Score = 40% Hit Rate + 20% Avg Return + 15% Sharpe + 10% Drawdown + 10% Consistency + 5% Peer Review</div>
@@ -32,7 +34,7 @@ export default function AnalystsPage() {
       <div className="scroll-y" style={{ flex: 1, padding: 16 }}>
         {tab === 'overview' && (
           <>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 8, marginBottom: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 1)},1fr)`, gap: 8, marginBottom: 14 }}>
               {(['A+', 'A', 'B'] as const).map(t => {
                 const colors: Record<string, string> = { 'A+': 'var(--purple)', A: 'var(--accent)', B: 'var(--long)' };
                 const labels: Record<string, string> = { 'A+': 'Elite', A: 'Strong', B: 'Average' };
@@ -49,7 +51,7 @@ export default function AnalystsPage() {
                 );
               })}
             </div>
-            <div className="panel">
+            <div className="panel tbl-wrap">
               <table className="tbl">
                 <thead><tr><th>#</th><th>ANALYST</th><th>TITLE</th><th>TIER</th><th style={{ textAlign: 'right' }}>RESEARCH SCORE</th><th style={{ textAlign: 'right' }}>HIT RATE</th><th style={{ textAlign: 'right' }}>AVG RET</th><th style={{ textAlign: 'right' }}>SHARPE</th><th style={{ textAlign: 'right' }}>DRAW. CTRL</th><th style={{ textAlign: 'right' }}>CONSISTENCY</th><th style={{ textAlign: 'right' }}>PEER</th><th>VOTE WT</th></tr></thead>
                 <tbody>
@@ -86,7 +88,7 @@ export default function AnalystsPage() {
         )}
 
         {(tab === 'idea' || tab === 'allocator') && (
-          <div className="panel">
+          <div className="panel tbl-wrap">
             <div style={{ padding: '10px 12px 0' }}>
               <div style={{ fontSize: 11, color: 'var(--text3)', marginBottom: 10 }}>
                 {tab === 'idea' ? 'Idea Creator Score: alpha generated, hit rate, risk-adjusted returns on submitted ideas.' : 'Capital Allocator Score: performance of ideas voted for — ability to identify winners.'}

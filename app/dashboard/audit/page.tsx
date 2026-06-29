@@ -23,7 +23,7 @@ export default function AuditPage() {
   }, [user]);
 
   if (!user || user.role !== 'CIO') return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+    <div className="dash-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <div className="panel" style={{ padding: 32, textAlign: 'center', maxWidth: 340 }}>
         <div style={{ fontSize: 28, marginBottom: 8 }}>⛔</div>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--short)' }}>ACCESS DENIED</div>
@@ -36,9 +36,9 @@ export default function AuditPage() {
   const highCount = entries.filter(l => l.risk === 'HIGH').length;
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="dash-content" style={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <div style={{ padding: 16, borderBottom: '1px solid var(--border)' }}>
-        <div className="sec-hdr" style={{ marginBottom: 10 }}>
+        <div className="sec-hdr" style={{ marginBottom: 10, flexWrap: 'wrap', gap: 8 }}>
           <div>
             <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Immutable Audit Log</div>
             <div style={{ fontSize: 10, color: 'var(--text3)' }}>All events · Tamper-proof SHA-256 chain · Cannot be deleted · CIO access only</div>
@@ -55,7 +55,7 @@ export default function AuditPage() {
         </div>
       </div>
 
-      <div className="scroll-y" style={{ flex: 1 }}>
+      <div className="scroll-y" style={{ flex: 1, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {loading ? (
           <div style={{ padding: 32, textAlign: 'center', color: 'var(--text4)', fontSize: 11 }}>Loading audit log…</div>
         ) : error ? (

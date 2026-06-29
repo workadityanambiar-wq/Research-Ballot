@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import type { CalendarEvent, EcoEvent } from '@/lib/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -26,6 +27,7 @@ function getFirstDayOfMonth(y: number, m: number) { return new Date(y, m, 1).get
 
 export default function CalendarPage() {
   const { user } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   const today = new Date();
 
   const [viewYear,  setViewYear]  = useState(today.getFullYear());
@@ -144,9 +146,9 @@ export default function CalendarPage() {
   ].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 10);
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 20, gap: 16 }}>
+    <div className="dash-content" style={{ display: 'flex', flexDirection: 'column', height: '100%', padding: 20, gap: 16 }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 8 }}>
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Research Calendar</h1>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>
@@ -190,7 +192,7 @@ export default function CalendarPage() {
       {showForm && (
         <div className="panel" style={{ padding: 14 }}>
           <div className="sec-title" style={{ marginBottom: 10 }}>New Calendar Event</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 1)}, 1fr)`, gap: 8 }}>
             <div style={{ gridColumn: '1 / 3' }}>
               <div className="form-label">Title *</div>
               <input className="inp" placeholder="NVDA Q3 Earnings" value={newEvent.title}
@@ -235,7 +237,7 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 320px', gap: 16, flex: 1, minHeight: 0 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 320px', gap: 16, flex: 1, minHeight: 0 }}>
 
         {/* Calendar grid */}
         <div className="panel" style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>

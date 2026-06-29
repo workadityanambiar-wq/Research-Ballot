@@ -2,6 +2,7 @@
 import { use, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import RichEditor from '@/components/ui/RichEditor';
 import type { Trade, TradeExecution, PositionHistory, PerformanceAttribution } from '@/lib/types';
 
@@ -38,6 +39,7 @@ const ATTR_FIELDS = [
 export default function TradePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const { user } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   const [trade, setTrade] = useState<FullTrade | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('Overview');
@@ -144,9 +146,9 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
   const attrMap = (trade.attribution ?? {}) as Record<string, unknown>;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="dash-content" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Header */}
-      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--panel)', flexShrink: 0 }}>
+      <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 12, background: 'var(--panel)', flexShrink: 0, flexWrap: 'wrap' }}>
         <Link href="/dashboard/trades" style={{ color: 'var(--text4)', fontSize: 16 }}>←</Link>
         <div style={{ flex: 1 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -179,7 +181,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', background: 'var(--panel)', flexShrink: 0 }}>
+      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid var(--border)', background: 'var(--panel)', flexShrink: 0, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
             padding: '8px 14px', border: 'none', cursor: 'pointer', fontSize: 11, fontWeight: 600,
@@ -193,7 +195,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
         {/* ── OVERVIEW ── */}
         {tab === 'Overview' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 900 }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 10 }}>
               {[
                 { label: 'Entry Price', val: `$${trade.entryPrice ?? '—'}` },
                 { label: 'Stop Loss', val: trade.stopLoss ? `$${trade.stopLoss}` : '—' },
@@ -213,7 +215,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
             {pos && (
               <div className="panel" style={{ padding: 16 }}>
                 <div className="sec-title" style={{ marginBottom: 12 }}>Live Position</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(6, 3, 2)}, 1fr)`, gap: 10 }}>
                   {[
                     { label: 'Qty', val: pos.quantity.toFixed(0) },
                     { label: 'Avg Cost', val: `$${pos.avgCost.toFixed(2)}` },
@@ -240,7 +242,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
                 readOnly={!canEdit}
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12 }}>
               {[
                 { field: 'pmNotes', label: 'PM Notes', placeholder: 'Portfolio manager notes and execution rationale…', readOnly: !canEdit },
                 { field: 'cioNotes', label: 'CIO Notes', placeholder: 'Chief Investment Officer notes…', readOnly: !(user && user.role === 'CIO') },
@@ -265,7 +267,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 700 }}>
             <div className="panel" style={{ padding: 16 }}>
               <div className="sec-title" style={{ marginBottom: 12 }}>Price Levels</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 1)}, 1fr)`, gap: 10 }}>
                 {[
                   { label: 'Entry Price', field: 'entryPrice', val: trade.entryPrice },
                   { label: 'Stop Loss', field: 'stopLoss', val: trade.stopLoss },
@@ -285,7 +287,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
             </div>
             <div className="panel" style={{ padding: 16 }}>
               <div className="sec-title" style={{ marginBottom: 12 }}>Position Sizing</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 1)}, 1fr)`, gap: 10 }}>
                 {[
                   { label: 'Position Size (%)', field: 'positionSize', val: trade.positionSize },
                   { label: 'Max Capital ($)', field: 'maxCapital', val: trade.maxCapital },
@@ -302,7 +304,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
             </div>
             <div className="panel" style={{ padding: 16 }}>
               <div className="sec-title" style={{ marginBottom: 12 }}>Trade Details</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 1)}, 1fr)`, gap: 10 }}>
                 {[
                   { label: 'Side', field: 'side', type: 'text', val: trade.side },
                   { label: 'Exchange', field: 'exchange', type: 'text', val: trade.exchange },
@@ -335,7 +337,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
             {canEdit && (trade.status === 'APPROVED' || isActive) && (
               <div className="panel" style={{ padding: 16 }}>
                 <div className="sec-title" style={{ marginBottom: 12 }}>Record Execution</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 1)}, 1fr)`, gap: 10, marginBottom: 10 }}>
                   <div>
                     <div className="form-label" style={{ marginBottom: 4 }}>Type</div>
                     <select className="inp" value={execForm.type} onChange={e => setExecForm(f => ({ ...f, type: e.target.value }))}>
@@ -363,7 +365,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
             {canEdit && isActive && (
               <div className="panel" style={{ padding: 16 }}>
                 <div className="sec-title" style={{ marginBottom: 12 }}>Close Position</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 10, marginBottom: 10 }}>
                   <div>
                     <div className="form-label" style={{ marginBottom: 4 }}>Exit Price</div>
                     <input className="inp" type="number" placeholder="0.00" value={closeForm.exitPrice} onChange={e => setCloseForm(f => ({ ...f, exitPrice: e.target.value }))} />
@@ -399,7 +401,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
                   }} />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 2)}, 1fr)`, gap: 10 }}>
               {[
                 { label: 'Entry Date', val: new Date(pos.entryDate).toLocaleDateString() },
                 { label: 'Entry Price', val: `$${pos.avgCost.toFixed(2)}` },
@@ -424,7 +426,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
             {canEdit && isActive && (
               <div className="panel" style={{ padding: 16 }}>
                 <div className="sec-title" style={{ marginBottom: 12 }}>Partial Exit</div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 10, marginBottom: 10 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(3, 2, 1)}, 1fr)`, gap: 10, marginBottom: 10 }}>
                   <div>
                     <div className="form-label" style={{ marginBottom: 4 }}>Exit Price</div>
                     <input className="inp" type="number" placeholder="0.00" value={partialForm.exitPrice} onChange={e => setPartialForm(f => ({ ...f, exitPrice: e.target.value }))} />
@@ -477,7 +479,7 @@ export default function TradePage({ params }: { params: Promise<{ id: string }> 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 700 }}>
             <div className="panel" style={{ padding: 16 }}>
               <div className="sec-title" style={{ marginBottom: 12 }}>Performance Attribution Scores (1–10)</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 12 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(2, 2, 1)}, 1fr)`, gap: 12 }}>
                 {ATTR_FIELDS.map(({ key, label }) => {
                   const val = (attrMap[key] as number | null) ?? null;
                   return (

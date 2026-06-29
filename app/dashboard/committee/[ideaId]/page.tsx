@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, use } from 'react';
 import Link from 'next/link';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 // ── Types (unchanged) ────────────────────────────────────────────────────────
 
@@ -179,6 +180,7 @@ function SectionCard({ title, children, right, accent }: { title: string; childr
 
 export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId: string }> }) {
   const { ideaId } = use(params);
+  const { isMobile, cols } = useBreakpoint();
   const [tab, setTab] = useState<Tab>('Overview');
   const [data, setData] = useState<CommitteeData | null>(null);
   const [readiness, setReadiness] = useState<Readiness | null>(null);
@@ -352,7 +354,7 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
   // ── Render ────────────────────────────────────────────────────────────────
 
   return (
-    <div className="scroll-y" style={{ height: '100%', background: 'var(--bg)' }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', background: 'var(--bg)' }}>
 
       {/* ═══════════════════════════════════════════════════════════════════════
           PREMIUM HEADER
@@ -368,7 +370,7 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
         <div style={{ height: 3, background: `linear-gradient(90deg, ${lc}, var(--accent), var(--purple))` }} />
 
         <div style={{ padding: '14px 20px' }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, justifyContent: 'space-between', flexWrap: 'wrap' }}>
 
             {/* Identity */}
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
@@ -432,7 +434,7 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
             </div>
 
             {/* Score gauges */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 24, flexShrink: 0 }}>
+            <div className={isMobile ? 'hide-mobile' : ''} style={{ display: 'flex', alignItems: 'center', gap: 24, flexShrink: 0 }}>
               <ScoreGauge label="Committee Score" value={fscore > 0 ? fscore.toFixed(0) : '—'} pct={fscore} color={fsc} sub={fscore > 0 ? scoreLabel(fscore) : 'No score'} />
               <div style={{ width: 1, height: 60, background: 'var(--border)' }} />
               <ScoreGauge label="Quant Overlay" value={qScore > 0 ? qScore.toFixed(0) : '—'} pct={qScore} color={qsc} sub={idea.quantScoreData?.quantLabel ?? (qScore === 0 ? 'No data' : scoreLabel(qScore))} />
@@ -442,7 +444,7 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
           </div>
 
           {/* Action bar */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
             <Link href="/dashboard/committee" style={{ textDecoration: 'none' }}>
               <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '6px 12px', borderRadius: 6, border: '1px solid var(--border)', background: 'var(--panel)', cursor: 'pointer', fontSize: 10, fontWeight: 600, color: 'var(--text3)', transition: 'all .12s' }}
                 onMouseEnter={e => { const el = e.currentTarget; el.style.borderColor = 'var(--border2)'; el.style.color = 'var(--text)'; }}
@@ -492,6 +494,7 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
           display: 'flex', gap: 2, background: 'var(--panel)',
           border: '1px solid var(--border)', borderRadius: 10,
           padding: 4, marginBottom: 16, boxShadow: 'var(--shadow)',
+          overflowX: 'auto', WebkitOverflowScrolling: 'touch',
         }}>
           {TABS.map(t => {
             const active = tab === t;
@@ -524,7 +527,7 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
 
         {/* ── OVERVIEW TAB ── */}
         {tab === 'Overview' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 16, alignItems: 'start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 280px', gap: 16, alignItems: 'start' }}>
 
             {/* LEFT COLUMN */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -535,7 +538,7 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
               </SectionCard>
 
               {/* Key Metrics Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 8 }}>
                 {[
                   { label: 'PM Score', val: idea.pmScore?.toFixed(1) ?? '—', color: 'var(--accent)', sub: 'Portfolio Manager' },
                   { label: 'Skill Score', val: idea.skillScore?.toFixed(1) ?? '—', color: 'var(--purple)', sub: 'Analyst Skill' },
@@ -742,7 +745,7 @@ export default function CommitteeIdeaPage({ params }: { params: Promise<{ ideaId
                     </span>
                   </div>
                   <div style={{ padding: '14px 16px' }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 10 }}>
                       {[
                         { label: 'Bid', val: liveQuote.bid.toFixed(2), color: 'var(--short)', prefix: '$' },
                         { label: 'Ask', val: liveQuote.ask.toFixed(2), color: 'var(--long)', prefix: '$' },

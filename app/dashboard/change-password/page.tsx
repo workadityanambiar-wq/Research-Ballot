@@ -38,7 +38,7 @@ export default function ChangePasswordPage() {
   };
 
   if (done) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 14 }}>
+    <div className="dash-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 14, padding: '0 16px' }}>
       <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--long-dim)', border: '1px solid rgba(34,197,94,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: 'var(--long)' }}>✓</div>
       <div style={{ fontSize: 15, fontWeight: 700 }}>Password Updated</div>
       <div style={{ fontSize: 11, color: 'var(--text3)' }}>Your new password is active. You&apos;ve been signed out of all other sessions.</div>
@@ -47,8 +47,8 @@ export default function ChangePasswordPage() {
   );
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-      <div style={{ width: 400 }}>
+    <div className="dash-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 16px' }}>
+      <div style={{ width: '100%', maxWidth: 400 }}>
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Change Password</div>
           <div style={{ fontSize: 10, color: 'var(--text3)' }}>Update your Research Ballot login password · expires every 90 days</div>

@@ -1,21 +1,23 @@
 'use client';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { TierBadge } from '@/components/ui/Badge';
 import { Bar } from '@/components/ui/Bar';
 
 export default function AttributionPage() {
   const { user, users } = useApp();
+  const { isMobile } = useBreakpoint();
   if (!user) return null;
 
   const analysts = users;
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: 16 }}>
-      <div className="sec-hdr" style={{ marginBottom: 12 }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: 16 }}>
+      <div className="sec-hdr" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div><div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Attribution Analytics</div><div style={{ fontSize: 10, color: 'var(--text3)' }}>Dual-track: Idea Creator vs Capital Allocator · Independent skill measurement</div></div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
         {([['TOP IDEA CREATORS', 'ideaScore', 'var(--accent)'], ['TOP CAPITAL ALLOCATORS', 'allocScore', 'var(--purple)']] as [string, 'ideaScore' | 'allocScore', string][]).map(([title, key, color]) => (
           <div key={title} className="panel" style={{ padding: 12 }}>
             <div className="sec-title" style={{ marginBottom: 8 }}>{title}</div>
@@ -32,7 +34,7 @@ export default function AttributionPage() {
         ))}
       </div>
 
-      <div className="panel">
+      <div className="panel tbl-wrap">
         <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}><span className="sec-title">DUAL-TRACK ATTRIBUTION TABLE</span></div>
         <table className="tbl">
           <thead><tr><th>#</th><th>ANALYST</th><th>TITLE</th><th>TIER</th><th style={{ textAlign: 'right' }}>IDEA SCORE</th><th style={{ textAlign: 'right' }}>ALLOC SCORE</th><th style={{ textAlign: 'right' }}>DELTA</th><th>SKILL PROFILE</th><th>IDEA</th><th>ALLOC</th></tr></thead>

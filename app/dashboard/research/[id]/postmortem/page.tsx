@@ -2,12 +2,14 @@
 import { use, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import RichEditor from '@/components/ui/RichEditor';
 import type { PostMortem } from '@/lib/types';
 
 export default function PostMortemPage({ params }: { params: Promise<{ id: string }> }) {
   const { id: ideaId } = use(params);
   const { user } = useApp();
+  const { cols } = useBreakpoint();
   const [pm, setPm] = useState<PostMortem | null>(null);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -58,7 +60,7 @@ export default function PostMortemPage({ params }: { params: Promise<{ id: strin
   );
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
+    <div className="scroll-y dash-content" style={{ flex: 1, padding: 20 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 20 }}>
         <Link href={`/dashboard/research/${ideaId}`} style={{ color: 'var(--text4)', fontSize: 18 }}>←</Link>
         <div>
@@ -85,7 +87,7 @@ export default function PostMortemPage({ params }: { params: Promise<{ id: strin
           {/* Trade data */}
           <div className="panel" style={{ padding: 16 }}>
             <div className="sec-title" style={{ marginBottom: 12 }}>Trade Data</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 10 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(4, 2, 2)}, 1fr)`, gap: 10 }}>
               {[
                 { label: 'Entry Price', field: 'entryPrice', val: pm.entryPrice },
                 { label: 'Exit Price', field: 'exitPrice', val: pm.exitPrice },

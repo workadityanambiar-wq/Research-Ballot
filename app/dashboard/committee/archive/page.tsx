@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 
 type ArchivedIdea = {
   id: string; ticker: string; dir: string; finalScore: number | null;
@@ -134,6 +135,7 @@ function DecisionCard({ idea, idx }: { idea: ArchivedIdea; idx: number }) {
 }
 
 export default function ArchivePage() {
+  const { cols } = useBreakpoint();
   const [data, setData] = useState<ArchiveResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -162,10 +164,10 @@ export default function ArchivePage() {
   const totalVotes = ideas.reduce((s, i) => s + i.voteCount, 0);
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: '18px 20px', background: 'var(--bg)' }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: '18px 20px', background: 'var(--bg)' }}>
 
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 16 }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16, gap: 16, flexWrap: 'wrap' }}>
         <div>
           <div style={{ marginBottom: 4 }}>
             <Link href="/dashboard/committee" style={{ fontSize: 10, color: 'var(--text4)', fontWeight: 600, letterSpacing: '.04em', textDecoration: 'none' }}>← COMMITTEE</Link>
@@ -177,7 +179,7 @@ export default function ArchivePage() {
 
       {/* Stats row */}
       {!loading && data && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 8, marginBottom: 16 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(5, 3, 2)}, 1fr)`, gap: 8, marginBottom: 16 }}>
           {[
             { label: 'Total Decisions', value: data.total, color: 'var(--text2)', icon: '≡' },
             { label: 'Approved', value: approvedCount, color: 'var(--long)', icon: '✓' },

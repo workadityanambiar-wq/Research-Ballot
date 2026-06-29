@@ -2,6 +2,7 @@
 import { use, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import RichEditor from '@/components/ui/RichEditor';
 import type { ResearchDoc, ResearchCatalyst, ResearchRisk, ResearchAttachment, ResearchReference, ResearchComment } from '@/lib/types';
 
@@ -42,6 +43,7 @@ function CompletionBar({ pct, label }: { pct: number; label: string }) {
 export default function ResearchWorkspace({ params }: { params: Promise<{ id: string }> }) {
   const { id: ideaId } = use(params);
   const { user } = useApp();
+  const { isMobile } = useBreakpoint();
   const [doc, setDoc] = useState<FullDoc | null>(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<Tab>('Overview');
@@ -217,10 +219,10 @@ export default function ResearchWorkspace({ params }: { params: Promise<{ id: st
   const idea = doc.idea;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="dash-content" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
       {/* Workspace header */}
       <div style={{ background: 'var(--panel)', borderBottom: '1px solid var(--border)', padding: '12px 20px', flexShrink: 0 }}>
-        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, justifyContent: 'space-between' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16, justifyContent: 'space-between', flexWrap: 'wrap' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link href="/dashboard/research" style={{ color: 'var(--text4)', fontSize: 18, lineHeight: 1 }}>←</Link>
             <div>
@@ -274,7 +276,7 @@ export default function ResearchWorkspace({ params }: { params: Promise<{ id: st
         </div>
 
         {/* Tab bar */}
-        <div style={{ display: 'flex', gap: 2, marginTop: 12, borderBottom: '1px solid var(--border)', marginBottom: -1 }}>
+        <div style={{ display: 'flex', gap: 2, marginTop: 12, borderBottom: '1px solid var(--border)', marginBottom: -1, overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
           {TABS.map(t => {
             const badge = t === 'Catalysts' ? doc.catalysts.length :
               t === 'Risks' ? doc.risks.length :
@@ -306,7 +308,7 @@ export default function ResearchWorkspace({ params }: { params: Promise<{ id: st
 
         {/* ── OVERVIEW ── */}
         {tab === 'Overview' && (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 16 }}>
             {/* Idea snapshot */}
             <div className="panel" style={{ padding: 16, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div className="sec-title">Idea Snapshot</div>

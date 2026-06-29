@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { Dot } from '@/components/ui/Dot';
 import { RiskBadge, SevBadge } from '@/components/ui/Badge';
 import { StatCard } from '@/components/ui/StatCard';
@@ -17,6 +18,7 @@ interface SessionStats {
 
 export default function SecurityPage() {
   const { user } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   const [sessions, setSessions] = useState<SessionRow[]>([]);
   const [stats, setStats] = useState<SessionStats>({ activeSessions: 0, mfaEnrolledCount: 0, totalUsers: 0, blockedCount: 0 });
   const [anomalies, setAnomalies] = useState<AuditEntry[]>([]);
@@ -36,7 +38,7 @@ export default function SecurityPage() {
   }, [user]);
 
   if (!user || user.role !== 'CIO') return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+    <div className="dash-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
       <div className="panel" style={{ padding: 32, textAlign: 'center', maxWidth: 340 }}>
         <div style={{ fontSize: 28, marginBottom: 8 }}>⛔</div>
         <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 6, color: 'var(--short)' }}>ACCESS DENIED</div>
@@ -53,8 +55,8 @@ export default function SecurityPage() {
   const nonMfaCount = stats.totalUsers - stats.mfaEnrolledCount;
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: 16 }}>
-      <div className="sec-hdr" style={{ marginBottom: 14 }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: 16 }}>
+      <div className="sec-hdr" style={{ marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Security Dashboard</div>
           <div style={{ fontSize: 10, color: 'var(--text3)' }}>Session monitoring · Device fingerprinting · Login anomaly detection · MFA enforcement</div>
@@ -69,7 +71,7 @@ export default function SecurityPage() {
         <div style={{ padding: 32, textAlign: 'center', color: 'var(--text4)', fontSize: 11 }}>Loading security data…</div>
       ) : (
         <>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 14 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(5, 3, 2)},1fr)`, gap: 8, marginBottom: 14 }}>
             <StatCard label="Active Sessions" value={stats.activeSessions} color="var(--long)" />
             <StatCard label="MFA Enrolled" value={`${stats.mfaEnrolledCount}/${stats.totalUsers}`} color="var(--accent)" sub={nonMfaCount > 0 ? `${nonMfaCount} non-compliant` : 'All compliant'} />
             <StatCard label="Anomalies (24h)" value={anomalies.length} color="var(--short)" />
@@ -77,13 +79,13 @@ export default function SecurityPage() {
             <StatCard label="Avg Risk Score" value={avgRisk} color="var(--warn)" sub="/ 100" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 12, marginBottom: 12 }}>
             <div className="panel">
               <div style={{ padding: '10px 12px', borderBottom: '1px solid var(--border)' }}><span className="sec-title">ACTIVE SESSIONS & STATUS</span></div>
               {sessions.length === 0 ? (
                 <div style={{ padding: 20, textAlign: 'center', color: 'var(--text4)', fontSize: 10 }}>No active sessions</div>
               ) : (
-                <table className="tbl">
+                <div className="tbl-wrap"><table className="tbl">
                   <thead><tr><th>USER</th><th>ROLE</th><th>IP</th><th>DEVICE</th><th>LAST ACTIVE</th><th>MFA</th><th>STATUS</th><th>RISK</th></tr></thead>
                   <tbody>
                     {sessions.map(s => (
@@ -104,7 +106,7 @@ export default function SecurityPage() {
                       </tr>
                     ))}
                   </tbody>
-                </table>
+                </table></div>
               )}
             </div>
 

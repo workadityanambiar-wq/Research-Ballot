@@ -1,5 +1,6 @@
 'use client';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import { usePortfolioAnalytics } from '@/hooks/useLiveData';
 import { StatCard } from '@/components/ui/StatCard';
 import { DirBadge } from '@/components/ui/Badge';
@@ -10,6 +11,7 @@ import { WEEK_ID } from '@/lib/data';
 
 export default function PortfolioPage() {
   const { user, portfolio, setPortfolio } = useApp();
+  const { isMobile, cols } = useBreakpoint();
   const { data: analytics, loading: analyticsLoading } = usePortfolioAnalytics(WEEK_ID);
 
   if (!user) return null;
@@ -32,8 +34,8 @@ export default function PortfolioPage() {
   };
 
   return (
-    <div className="scroll-y" style={{ height: '100%', padding: 16 }}>
-      <div className="sec-hdr" style={{ marginBottom: 12 }}>
+    <div className="scroll-y dash-content" style={{ height: '100%', padding: 16 }}>
+      <div className="sec-hdr" style={{ marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 2 }}>Portfolio Allocation Engine</div>
           <div style={{ fontSize: 10, color: 'var(--text3)' }}>Auto: Top 3 → 15% · Ranks 4-8 → 8% · Remainder → Cash{canAdj && ' · Override enabled'}</div>
@@ -41,7 +43,7 @@ export default function PortfolioPage() {
         <div style={{ display: 'flex', gap: 8 }}><span className="badge badge-dim">{WEEK_ID}</span>{canAdj && <span className="badge badge-warn">OVERRIDE</span>}</div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5,1fr)', gap: 8, marginBottom: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${cols(5, 3, 2)},1fr)`, gap: 8, marginBottom: 12 }}>
         <StatCard label="Exp. Portfolio Return" value={expRet + '%'} color="var(--long)" />
         <StatCard
           label="Exp. Volatility"
@@ -57,8 +59,8 @@ export default function PortfolioPage() {
         <StatCard label="Cash Reserve" value={cash + '%'} color={cash < 10 ? 'var(--short)' : 'var(--text)'} />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 330px', gap: 12 }}>
-        <div className="panel">
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 330px', gap: 12 }}>
+        <div className="panel tbl-wrap">
           <table className="tbl">
             <thead><tr><th>RNK</th><th>TICKER</th><th>DIR</th><th>SECTOR</th><th style={{ textAlign: 'right' }}>AUTO</th><th style={{ textAlign: 'right' }}>ALLOC %</th><th>BAR</th><th style={{ textAlign: 'right' }}>EXP.RET</th><th style={{ textAlign: 'right' }}>BETA</th>{canAdj && <th>OVERRIDE</th>}</tr></thead>
             <tbody>
@@ -92,7 +94,7 @@ export default function PortfolioPage() {
           </table>
         </div>
 
-        <div>
+        <div className={isMobile ? 'hide-mobile' : ''}>
           <div className="panel" style={{ padding: 12, marginBottom: 10 }}>
             <div className="sec-title" style={{ marginBottom: 10 }}>SECTOR EXPOSURE</div>
             {Object.entries(sectorExp).map(([sec, pct]) => (

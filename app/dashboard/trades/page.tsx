@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { useApp } from '@/context/AppContext';
+import { useBreakpoint } from '@/hooks/useBreakpoint';
 import type { Trade } from '@/lib/types';
 
 const STATUS_BADGE: Record<string, string> = {
@@ -13,6 +14,7 @@ const TABS = ['ALL', 'PROPOSAL', 'APPROVED', 'ACTIVE', 'CLOSED'];
 
 export default function TradesPage() {
   const { user } = useApp();
+  const { isMobile } = useBreakpoint();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('ALL');
@@ -65,8 +67,8 @@ export default function TradesPage() {
   for (const t of trades) counts[t.status] = (counts[t.status] ?? 0) + 1;
 
   return (
-    <div className="scroll-y" style={{ flex: 1, padding: 20 }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+    <div className="scroll-y dash-content" style={{ flex: 1, padding: 20 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 8 }}>
         <div>
           <h1 style={{ fontSize: 18, fontWeight: 700, color: 'var(--text)' }}>Trade Proposals</h1>
           <p style={{ fontSize: 12, color: 'var(--text3)', marginTop: 2 }}>Full trade lifecycle from approval to exit</p>
@@ -125,7 +127,7 @@ export default function TradesPage() {
             const pnlColor = pos?.unrealizedPnl ? (pos.unrealizedPnl >= 0 ? 'var(--long)' : 'var(--short)') : 'var(--text3)';
             return (
               <Link key={trade.id} href={`/dashboard/trades/${trade.id}`} style={{ textDecoration: 'none' }}>
-                <div className="panel" style={{ padding: 14, display: 'grid', gridTemplateColumns: '140px 1fr auto', gap: 16, alignItems: 'center', cursor: 'pointer' }}>
+                <div className="panel" style={{ padding: 14, display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '140px 1fr auto', gap: isMobile ? 8 : 16, alignItems: 'center', cursor: 'pointer' }}>
                   <div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                       <span style={{ fontFamily: 'var(--mono)', fontWeight: 800, fontSize: 14, color: 'var(--text)' }}>

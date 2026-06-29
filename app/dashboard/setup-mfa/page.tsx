@@ -44,7 +44,7 @@ export default function SetupMfaPage() {
   };
 
   if (done) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 16 }}>
+    <div className="dash-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', flexDirection: 'column', gap: 16, padding: '0 16px' }}>
       <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'var(--long-dim)', border: '1px solid rgba(34,197,94,.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, color: 'var(--long)' }}>✓</div>
       <div style={{ fontSize: 15, fontWeight: 700 }}>MFA Enabled</div>
       <div style={{ fontSize: 11, color: 'var(--text3)' }}>Authenticator configured. Redirecting to dashboard…</div>
@@ -52,8 +52,8 @@ export default function SetupMfaPage() {
   );
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
-      <div style={{ width: 440 }}>
+    <div className="dash-content" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', padding: '0 16px' }}>
+      <div style={{ width: '100%', maxWidth: 440 }}>
         <div style={{ marginBottom: 20 }}>
           <div style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>Set Up Authenticator</div>
           <div style={{ fontSize: 10, color: 'var(--text3)' }}>
