@@ -18,6 +18,23 @@ type FullDoc = ResearchDoc & {
 const TABS = ['Overview', 'Thesis', 'Catalysts', 'Risks', 'Valuation', 'Financials', 'Technical', 'Attachments', 'References', 'Committee'] as const;
 type Tab = typeof TABS[number];
 
+// Detect if idea was submitted as an investment memo (JSON thesis)
+function detectMemoType(thesis: string | null): 'investment' | 'trading' {
+  if (!thesis) return 'trading';
+  try {
+    const p = JSON.parse(thesis);
+    if (p && typeof p === 'object' && ('executiveSummary' in p || 'financial' in p)) return 'investment';
+  } catch {}
+  return 'trading';
+}
+
+// Parse the JSON memo into its sections (for investment ideas)
+type ParsedMemo = { executiveSummary?: string; thesis?: string; financial?: string; valuation?: string };
+function parseMemo(thesis: string | null): ParsedMemo {
+  if (!thesis) return {};
+  try { return JSON.parse(thesis) as ParsedMemo; } catch { return {}; }
+}
+
 const STATUS_OPTIONS = ['DRAFT', 'IN_PROGRESS', 'COMPLETE', 'RISK_REVIEW', 'COMMITTEE_REVIEW', 'ARCHIVED'] as const;
 const STATUS_LABELS: Record<string, string> = {
   DRAFT: 'Draft', IN_PROGRESS: 'In Progress', COMPLETE: 'Complete',
@@ -204,6 +221,14 @@ export default function ResearchWorkspace({ params }: { params: Promise<{ id: st
 
   const canEdit = doc && user && (doc.authorId === user.legacyId || ['CIO', 'PM'].includes(user.role));
 
+  const ideaType = detectMemoType(doc?.idea?.thesis ?? null);
+  const parsedMemo = parseMemo(doc?.idea?.thesis ?? null);
+
+  // For investment memos: merge JSON sections as fallback when workspace fields are empty
+  const effectiveThesis    = doc?.thesis     || (ideaType === 'investment' ? parsedMemo.thesis       ?? '' : '');
+  const effectiveFinancials= doc?.financials || (ideaType === 'investment' ? parsedMemo.financial    ?? '' : '');
+  const effectiveValuation = doc?.valuation  || (ideaType === 'investment' ? parsedMemo.valuation    ?? '' : '');
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text3)', fontFamily: 'var(--mono)', fontSize: 12 }}>
       LOADING WORKSPACE…
@@ -226,13 +251,21 @@ export default function ResearchWorkspace({ params }: { params: Promise<{ id: st
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <Link href="/dashboard/research" style={{ color: 'var(--text4)', fontSize: 18, lineHeight: 1 }}>←</Link>
             <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                 <span style={{ fontFamily: 'var(--mono)', fontWeight: 800, fontSize: 18, color: 'var(--text)' }}>
                   {idea?.ticker ?? ideaId}
                 </span>
                 {idea?.dir && (
                   <span className={`badge badge-${idea.dir === 'LONG' ? 'long' : 'short'}`}>{idea.dir}</span>
                 )}
+                <span style={{
+                  fontSize: 9, fontWeight: 700, letterSpacing: '.07em', padding: '2px 7px', borderRadius: 4,
+                  color: ideaType === 'investment' ? 'var(--accent)' : 'var(--purple)',
+                  background: ideaType === 'investment' ? 'var(--accent-dim)' : 'rgba(139,92,246,.1)',
+                  border: `1px solid ${ideaType === 'investment' ? 'rgba(37,99,235,.3)' : 'rgba(139,92,246,.3)'}`,
+                }}>
+                  {ideaType === 'investment' ? '◆ INVESTMENT MEMO' : '◈ TRADING IDEA'}
+                </span>
                 <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--text4)' }}>{ideaId}</span>
               </div>
               <div style={{ fontSize: 11, color: 'var(--text3)', marginTop: 2 }}>Research Workspace · {doc.authorId}</div>
@@ -358,9 +391,24 @@ export default function ResearchWorkspace({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            {/* Notes */}
+            {/* Executive Summary (investment memos) */}
+            {ideaType === 'investment' && parsedMemo.executiveSummary && (
+              <div className="panel" style={{ padding: 16, gridColumn: '1 / -1' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+                  <div className="sec-title" style={{ margin: 0 }}>Executive Summary</div>
+                  <span style={{ fontSize: 9, color: 'var(--accent)', background: 'var(--accent-dim)', padding: '1px 6px', borderRadius: 3, fontWeight: 600 }}>From Memo</span>
+                </div>
+                <p style={{ fontSize: 12, color: 'var(--text2)', lineHeight: 1.75, margin: 0, whiteSpace: 'pre-wrap' }}>
+                  {parsedMemo.executiveSummary}
+                </p>
+              </div>
+            )}
+
+            {/* Notes / Overview */}
             <div className="panel" style={{ padding: 16, gridColumn: '1 / -1' }}>
-              <div className="sec-title" style={{ marginBottom: 8 }}>Additional Notes</div>
+              <div className="sec-title" style={{ marginBottom: 8 }}>
+                {ideaType === 'investment' ? 'Additional Notes' : 'Overview & Notes'}
+              </div>
               <RichEditor
                 value={doc.overview ?? ''}
                 onSave={v => saveField('overview', v)}
@@ -378,8 +426,13 @@ export default function ResearchWorkspace({ params }: { params: Promise<{ id: st
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>Investment Thesis</div>
               <div style={{ fontSize: 12, color: 'var(--text3)' }}>Articulate the core investment case. What is the market missing? Why now?</div>
             </div>
+            {!doc.thesis && effectiveThesis && (
+              <div style={{ padding: '8px 12px', background: 'var(--accent-dim)', border: '1px solid rgba(37,99,235,.25)', borderRadius: 5, marginBottom: 10, fontSize: 10, color: 'var(--accent)' }}>
+                Content imported from Investment Memo submission. Save to persist any edits.
+              </div>
+            )}
             <RichEditor
-              value={doc.thesis ?? ''}
+              value={effectiveThesis}
               onSave={v => saveField('thesis', v)}
               placeholder="The primary investment thesis…"
               minHeight={400}
@@ -549,7 +602,12 @@ export default function ResearchWorkspace({ params }: { params: Promise<{ id: st
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>Valuation Analysis</div>
               <div style={{ fontSize: 12, color: 'var(--text3)' }}>DCF, comparable companies, historical multiples, sum of parts.</div>
             </div>
-            <RichEditor value={doc.valuation ?? ''} onSave={v => saveField('valuation', v)}
+            {!doc.valuation && effectiveValuation && (
+              <div style={{ padding: '8px 12px', background: 'var(--accent-dim)', border: '1px solid rgba(37,99,235,.25)', borderRadius: 5, marginBottom: 10, fontSize: 10, color: 'var(--accent)' }}>
+                Content imported from Investment Memo submission. Save to persist any edits.
+              </div>
+            )}
+            <RichEditor value={effectiveValuation} onSave={v => saveField('valuation', v)}
               placeholder="Valuation methodology and assumptions…" minHeight={400} readOnly={!canEdit} />
           </div>
         )}
@@ -561,7 +619,12 @@ export default function ResearchWorkspace({ params }: { params: Promise<{ id: st
               <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>Financial Analysis</div>
               <div style={{ fontSize: 12, color: 'var(--text3)' }}>Revenue, margins, cash flow, debt, capital allocation, management quality.</div>
             </div>
-            <RichEditor value={doc.financials ?? ''} onSave={v => saveField('financials', v)}
+            {!doc.financials && effectiveFinancials && (
+              <div style={{ padding: '8px 12px', background: 'var(--accent-dim)', border: '1px solid rgba(37,99,235,.25)', borderRadius: 5, marginBottom: 10, fontSize: 10, color: 'var(--accent)' }}>
+                Content imported from Investment Memo submission. Save to persist any edits.
+              </div>
+            )}
+            <RichEditor value={effectiveFinancials} onSave={v => saveField('financials', v)}
               placeholder="Revenue growth, margin expansion, FCF generation, balance sheet quality…" minHeight={400} readOnly={!canEdit} />
           </div>
         )}
