@@ -13,6 +13,7 @@ const NAV: NavEntry[] = [
   { id: 'dashboard', label: 'Dashboard', icon: '▤', href: '/dashboard' },
   { id: 'search', label: 'Search', icon: '⌕', href: '/dashboard/search' },
   { section: 'RESEARCH', key: 'research', defaultOpen: true },
+  { id: 'scanner', label: 'Pattern Scanner', icon: '⚡', href: '/dashboard/scanner' },
   { id: 'research', label: 'Research Pipeline', icon: '⬡', href: '/dashboard/research' },
   { id: 'calendar', label: 'Calendar', icon: '▦', href: '/dashboard/calendar' },
   { id: 'watchlists', label: 'Watchlists', icon: '◷', href: '/dashboard/watchlists' },

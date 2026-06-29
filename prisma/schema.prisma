@@ -1008,3 +1008,109 @@ model IdeaQuantScore {
 
   @@index([ideaId])
 }
+
+// ──────────────────────────────────────────────
+// Market Pattern Scanner
+// ──────────────────────────────────────────────
+
+model ScannerResult {
+  id              String   @id @default(cuid())
+  symbol          String
+  assetClass      String   @default("Other")
+  description     String?
+  pattern         String
+  category        String
+  direction       String
+  timeframe       String
+  tfLabel         String   @default("H1")
+  currentPrice    Float
+  breakoutLevel   Float
+  entry           Float
+  stop            Float
+  target1         Float
+  target2         Float
+  target3         Float
+  risk            Float
+  reward          Float
+  rrRatio         Float
+  patternScore    Float
+  patternQuality  Float    @default(0)
+  trendQuality    Float    @default(0)
+  volumeConf      Float    @default(0)
+  breakoutProb    Float    @default(0)
+  rrScore         Float    @default(0)
+  classification  String
+  status          String   @default("WATCH")
+  commentary      String?  @db.Text
+  holdingPeriod   String?
+  atr             Float    @default(0)
+  rsi             Float    @default(0)
+  adx             Float    @default(0)
+  isStarred       Boolean  @default(false)
+  detectedAt      DateTime @default(now())
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  alerts          ScannerAlert[]
+  watchedBy       ScannerWatchlistEntry[]
+
+  @@index([symbol])
+  @@index([pattern])
+  @@index([direction])
+  @@index([timeframe])
+  @@index([patternScore])
+  @@index([status])
+  @@index([detectedAt])
+  @@index([category])
+}
+
+model ScannerAlert {
+  id        String        @id @default(cuid())
+  resultId  String
+  result    ScannerResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  alertType String
+  message   String        @db.Text
+  isRead    Boolean       @default(false)
+  userId    String?
+  createdAt DateTime      @default(now())
+
+  @@index([resultId])
+  @@index([isRead])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model ScannerWatchlistEntry {
+  id        String        @id @default(cuid())
+  userId    String
+  resultId  String
+  result    ScannerResult @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  note      String?
+  createdAt DateTime      @default(now())
+
+  @@unique([userId, resultId])
+  @@index([userId])
+}
+
+model ScannerPerformanceLog {
+  id           String   @id @default(cuid())
+  symbol       String
+  pattern      String
+  category     String
+  timeframe    String
+  direction    String
+  patternScore Float
+  entryPrice   Float
+  exitPrice    Float?
+  returnPct    Float?
+  holdingBars  Int?
+  success      Boolean?
+  failReason   String?
+  createdAt    DateTime @default(now())
+  closedAt     DateTime?
+
+  @@index([pattern])
+  @@index([success])
+  @@index([createdAt])
+}

@@ -16,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
 import quant as q
+import scanner as sc
 
 load_dotenv()
 
@@ -338,6 +339,102 @@ def get_quant(
 
         # Final
         "quant_score": final,
+    }
+
+
+# ── Scanner endpoints ──────────────────────────────────────────────────────────
+
+@app.get("/symbols")
+def list_symbols(_=Depends(require_key)):
+    """Return all visible MT5 symbols with metadata."""
+    _ensure_connected()
+    return {"symbols": sc.get_available_symbols(), "ts": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/scan/{symbol}")
+def scan_symbol(
+    symbol: str,
+    timeframes: str = Query(default="H1,H4,D1", description="Comma-separated TF list: M5,M15,M30,H1,H4,D1,W1,MN1"),
+    min_score: float = Query(default=70.0, ge=0, le=100),
+    _=Depends(require_key),
+):
+    """Scan a single symbol across specified timeframes for patterns."""
+    _ensure_connected()
+    symbol = symbol.upper().strip()
+    tf_list = [t.strip().upper() for t in timeframes.split(",") if t.strip()]
+    if not tf_list:
+        raise HTTPException(status_code=400, detail="At least one timeframe required")
+    results = sc.scan_symbol(symbol, tf_list)
+    filtered = [r for r in results if r.get("pattern_score", 0) >= min_score]
+    return {
+        "symbol":       symbol,
+        "timeframes":   tf_list,
+        "patterns":     filtered,
+        "count":        len(filtered),
+        "scanned_at":   datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/scan")
+def run_full_scan(
+    symbols: str = Query(default="", description="Comma-separated symbol list. Empty = use default universe."),
+    timeframes: str = Query(default="H1,H4,D1"),
+    min_score: float = Query(default=70.0, ge=0, le=100),
+    _=Depends(require_key),
+):
+    """Run pattern scan across multiple symbols."""
+    _ensure_connected()
+    sym_list = [s.strip().upper() for s in symbols.split(",") if s.strip()] or None
+    tf_list  = [t.strip().upper() for t in timeframes.split(",") if t.strip()] or ["H1", "H4", "D1"]
+    results = sc.run_scan(sym_list, tf_list, min_score)
+    return {
+        "patterns":   results,
+        "count":      len(results),
+        "symbols":    sym_list or sc.DEFAULT_SYMBOLS,
+        "timeframes": tf_list,
+        "scanned_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+@app.get("/ohlcv/{symbol}")
+def get_ohlcv(
+    symbol: str,
+    timeframe: str = Query(default="H1", description="TF key: M5,M15,M30,H1,H4,D1,W1,MN1"),
+    bars: int = Query(default=100, ge=5, le=500),
+    _=Depends(require_key),
+):
+    """Return OHLCV candle data for charting."""
+    _ensure_connected()
+    symbol = symbol.upper().strip()
+    tf_map = sc.TF_MAP
+    mt5_tf = tf_map.get(timeframe.upper())
+    if mt5_tf is None:
+        raise HTTPException(status_code=400, detail=f"Invalid timeframe '{timeframe}'")
+    if not mt5.symbol_select(symbol, True):
+        raise HTTPException(status_code=404, detail=f"Symbol '{symbol}' not found")
+    rates = mt5.copy_rates_from_pos(symbol, mt5_tf, 0, bars)
+    if rates is None or len(rates) == 0:
+        raise HTTPException(status_code=404, detail=f"No data for '{symbol}' on {timeframe}")
+    info = mt5.symbol_info(symbol)
+    digits = info.digits if info else 5
+    candles = [
+        {
+            "t": int(r["time"]),
+            "o": round(float(r["open"]),  digits),
+            "h": round(float(r["high"]),  digits),
+            "l": round(float(r["low"]),   digits),
+            "c": round(float(r["close"]), digits),
+            "v": int(r["tick_volume"]),
+        }
+        for r in rates
+    ]
+    return {
+        "symbol":    symbol,
+        "timeframe": timeframe.upper(),
+        "candles":   candles,
+        "count":     len(candles),
+        "digits":    digits,
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
