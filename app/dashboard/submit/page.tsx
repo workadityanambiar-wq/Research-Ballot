@@ -35,6 +35,9 @@ interface MemoState {
   risks: Risk[];
   documents: DocFile[];
   references: RefEntry[];
+  tradingThesis: string;
+  tradingCatalysts: string;
+  tradingRisks: string;
 }
 
 const EMPTY_MEMO: MemoState = {
@@ -43,6 +46,7 @@ const EMPTY_MEMO: MemoState = {
   posSize: '', conv: 7, expRet: '', expDD: '',
   executiveSummary: '', thesis: '', financial: '', valuation: '',
   catalysts: [], risks: [], documents: [], references: [],
+  tradingThesis: '', tradingCatalysts: '', tradingRisks: '',
 };
 
 // ── Scoring ───────────────────────────────────────────────────────────────────
@@ -378,6 +382,7 @@ export default function SubmitPage() {
   const [aiHints, setAiHints] = useState<Record<string, string>>({});
   const [restoredDraft, setRestoredDraft] = useState(false);
   const [showRestorePrompt, setShowRestorePrompt] = useState(false);
+  const [mode, setMode] = useState<'trading' | 'investment'>('trading');
 
   const dirRef = useRef(memo.dir);
   useEffect(() => { dirRef.current = memo.dir; }, [memo.dir]);
@@ -516,6 +521,42 @@ export default function SubmitPage() {
     { label: 'Live MT5 price captured', pass: !!quote },
   ];
   const allGatesPass = gates.every(g => g.pass);
+
+  const tradingGates = [
+    { label: 'Live MT5 price captured', pass: !!quote },
+    { label: 'Stop loss set',           pass: !!memo.stop },
+    { label: 'Target set',              pass: !!memo.target },
+    { label: 'Thesis written',          pass: wc(memo.tradingThesis) >= 20 },
+  ];
+  const tradingGatesPass = tradingGates.every(g => g.pass);
+
+  const submitTrading = async () => {
+    if (!tradingGatesPass) return;
+    if (wkCount >= IDEA_LIMIT_PER_WEEK) { alert('Weekly limit reached.'); return; }
+    setSubmitting(true);
+    try {
+      const res = await fetch('/api/ideas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ticker: memo.ticker, assetClass: memo.assetClass, dir: memo.dir,
+          stop: memo.stop, target: memo.target, hold: memo.hold,
+          posSize: memo.posSize, conv: memo.conv, expRet: memo.expRet, expDD: memo.expDD,
+          thesis: memo.tradingThesis,
+          catalysts: memo.tradingCatalysts.split('\n').map((s: string) => s.trim()).filter(Boolean),
+          risks: memo.tradingRisks.split('\n').map((s: string) => s.trim()).filter(Boolean),
+          imageUrl: memo.documents[0]?.dataUrl ?? null,
+        }),
+      });
+      if (!res.ok) {
+        const err = await res.json() as { error?: string };
+        alert(err.error ?? 'Submission failed.'); return;
+      }
+      localStorage.removeItem(saveKey);
+      await refreshIdeas();
+      setDone(true);
+    } finally { setSubmitting(false); }
+  };
 
   // ── Catalysts helpers ─────────────────────────────────────────────────────
 
@@ -684,18 +725,36 @@ export default function SubmitPage() {
           <span style={{ fontSize: 10, color: 'var(--text4)' }}>No ticker selected</span>
         )}
         <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <CircleProgress pct={readinessPct} size={36} stroke={3} />
-            <span className="mono" style={{ position: 'absolute', fontSize: 8, fontWeight: 700, color: scoreColor(readinessPct / 100) }}>{readinessPct}%</span>
-          </div>
-          <span style={{ fontSize: 9, color: 'var(--text3)', fontWeight: 600 }}>READINESS</span>
-        </div>
-        <div style={{ width: 1, height: 16, background: 'var(--border)' }} />
+        {mode === 'investment' && (
+          <>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <CircleProgress pct={readinessPct} size={36} stroke={3} />
+                <span className="mono" style={{ position: 'absolute', fontSize: 8, fontWeight: 700, color: scoreColor(readinessPct / 100) }}>{readinessPct}%</span>
+              </div>
+              <span style={{ fontSize: 9, color: 'var(--text3)', fontWeight: 600 }}>READINESS</span>
+            </div>
+            <div style={{ width: 1, height: 16, background: 'var(--border)' }} />
+          </>
+        )}
         <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: saveDot, display: 'inline-block' }} />
           <span style={{ fontSize: 9, color: 'var(--text4)' }}>{saveLabel}</span>
         </div>
+      </div>
+
+      {/* Mode tab bar */}
+      <div style={{ display: 'flex', background: 'var(--panel)', borderBottom: '1px solid var(--border)', padding: '0 16px', flexShrink: 0 }}>
+        {(['trading', 'investment'] as const).map(m => (
+          <button key={m} onClick={() => setMode(m)} style={{
+            padding: '8px 14px', fontSize: 10, fontWeight: 700, letterSpacing: '.06em', textTransform: 'uppercase',
+            background: 'none', border: 'none', borderBottom: mode === m ? '2px solid var(--accent)' : '2px solid transparent',
+            cursor: 'pointer', color: mode === m ? 'var(--accent)' : 'var(--text4)',
+            transition: 'color .15s', marginBottom: -1, fontFamily: 'var(--sans)',
+          }}>
+            {m === 'trading' ? '◈ Trading Idea' : '◆ Investment Idea'}
+          </button>
+        ))}
       </div>
 
       {/* Body */}
@@ -742,11 +801,11 @@ export default function SubmitPage() {
 
                 <button
                   className="btn btn-primary"
-                  style={{ width: '100%', justifyContent: 'center', padding: '10px 12px', fontSize: 11, opacity: allGatesPass && !submitting ? 1 : 0.4 }}
-                  onClick={() => allGatesPass && setShowConfirm(true)}
-                  disabled={!allGatesPass || submitting}
+                  style={{ width: '100%', justifyContent: 'center', padding: '10px 12px', fontSize: 11, opacity: (mode === 'trading' ? tradingGatesPass : allGatesPass) && !submitting ? 1 : 0.4 }}
+                  onClick={() => (mode === 'trading' ? tradingGatesPass : allGatesPass) && setShowConfirm(true)}
+                  disabled={!(mode === 'trading' ? tradingGatesPass : allGatesPass) || submitting}
                 >
-                  {submitting ? 'SUBMITTING…' : 'SUBMIT MEMO →'}
+                  {submitting ? 'SUBMITTING…' : mode === 'trading' ? 'SUBMIT IDEA →' : 'SUBMIT MEMO →'}
                 </button>
               </div>
             </div>
@@ -829,6 +888,102 @@ export default function SubmitPage() {
               </div>
             </div>
 
+            {mode === 'trading' ? (
+              <>
+                {/* Brief Investment Thesis */}
+                <div className="panel" style={{ padding: 14, marginBottom: 10 }}>
+                  <div className="sec-title" style={{ marginBottom: 8 }}>INVESTMENT THESIS</div>
+                  <div style={{ padding: '6px 10px', background: 'rgba(37,99,235,.06)', border: '1px solid rgba(37,99,235,.2)', borderRadius: 4, marginBottom: 8, fontSize: 9, color: 'var(--accent)', lineHeight: 1.6 }}>
+                    Why this trade? What is the market mispricing? What is the catalyst and your edge?
+                  </div>
+                  <textarea className="inp" style={{ minHeight: 100, resize: 'vertical', fontFamily: 'var(--sans)', fontSize: 11, lineHeight: 1.7 }}
+                    placeholder="Brief thesis: market mispricing, upcoming catalyst, technical setup…"
+                    value={memo.tradingThesis}
+                    onChange={e => sm('tradingThesis', e.target.value)} />
+                  <div style={{ fontSize: 8, color: 'var(--text4)', marginTop: 4 }}>{wc(memo.tradingThesis)} words · min 20</div>
+                </div>
+
+                {/* Catalysts */}
+                <div className="panel" style={{ padding: 14, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+                    <div className="sec-title" style={{ margin: 0 }}>CATALYSTS</div>
+                    <span style={{ fontSize: 9, color: 'var(--text4)' }}>one per line</span>
+                  </div>
+                  <textarea className="inp" style={{ minHeight: 80, resize: 'vertical', fontFamily: 'var(--sans)', fontSize: 11, lineHeight: 1.7 }}
+                    placeholder={'Earnings beat expected\nFDA approval Q3\nShare buyback announcement'}
+                    value={memo.tradingCatalysts}
+                    onChange={e => sm('tradingCatalysts', e.target.value)} />
+                </div>
+
+                {/* Risks */}
+                <div className="panel" style={{ padding: 14, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+                    <div className="sec-title" style={{ margin: 0 }}>KEY RISKS</div>
+                    <span style={{ fontSize: 9, color: 'var(--text4)' }}>one per line</span>
+                  </div>
+                  <textarea className="inp" style={{ minHeight: 80, resize: 'vertical', fontFamily: 'var(--sans)', fontSize: 11, lineHeight: 1.7 }}
+                    placeholder={'Sector rotation\nMacro headwinds\nEarnings miss'}
+                    value={memo.tradingRisks}
+                    onChange={e => sm('tradingRisks', e.target.value)} />
+                </div>
+
+                {/* Chart / image (optional) */}
+                <div className="panel" style={{ padding: 14, marginBottom: 10 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 8 }}>
+                    <div className="sec-title" style={{ margin: 0 }}>CHART / IMAGE</div>
+                    <span style={{ fontSize: 9, color: 'var(--text4)' }}>optional</span>
+                  </div>
+                  <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }}
+                    onChange={e => { const fl = e.target.files?.[0]; if (fl) { loadFile(fl); e.target.value = ''; } }} />
+                  {memo.documents.length > 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px,1fr))', gap: 8, marginBottom: 10 }}>
+                      {memo.documents.map(doc => (
+                        <div key={doc.id} style={{ position: 'relative', border: '1px solid var(--border)', borderRadius: 4, overflow: 'hidden' }}>
+                          <img src={doc.dataUrl} alt={doc.name} style={{ width: '100%', height: 80, objectFit: 'cover' }} />
+                          <button onClick={() => sm('documents', memo.documents.filter(d => d.id !== doc.id))}
+                            style={{ position: 'absolute', top: 4, right: 4, background: 'rgba(0,0,0,.6)', border: 'none', borderRadius: 3, color: '#fff', fontSize: 10, width: 18, height: 18, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'var(--sans)' }}>×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div
+                    onClick={() => fileRef.current?.click()}
+                    onDragOver={e => { e.preventDefault(); setImgDrag(true); }}
+                    onDragLeave={() => setImgDrag(false)}
+                    onDrop={e => { e.preventDefault(); setImgDrag(false); const fl = e.dataTransfer.files[0]; if (fl) loadFile(fl); }}
+                    style={{ border: `1.5px dashed ${imgDrag ? 'var(--accent)' : 'var(--border)'}`, borderRadius: 6, padding: '16px', textAlign: 'center', cursor: 'pointer', background: imgDrag ? 'var(--accent-dim)' : 'var(--bg)', transition: 'all .15s' }}>
+                    <div style={{ fontSize: 14, marginBottom: 4 }}>📎</div>
+                    <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500 }}>Drop chart or click to upload</div>
+                    <div style={{ fontSize: 8, color: 'var(--text4)', marginTop: 3 }}>PNG, JPG, GIF</div>
+                  </div>
+                </div>
+
+                {/* Mobile: quant + gates + submit */}
+                {isMobile && (
+                  <>
+                    <div style={{ marginBottom: 10 }}><QuantPreviewPanel data={quantPreview} loading={quantLoading} /></div>
+                    <div className="panel" style={{ padding: 14, marginBottom: 12 }}>
+                      <div className="sec-title" style={{ marginBottom: 10 }}>READINESS GATES</div>
+                      {tradingGates.map(g => (
+                        <div key={g.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, color: g.pass ? 'var(--long)' : 'var(--short)' }}>{g.pass ? '✓' : '✗'}</span>
+                          <span style={{ fontSize: 9, color: g.pass ? 'var(--text3)' : 'var(--text4)' }}>{g.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      style={{ width: '100%', justifyContent: 'center', padding: 14, fontSize: 12, marginBottom: 24, opacity: tradingGatesPass && !submitting ? 1 : 0.4 }}
+                      onClick={() => tradingGatesPass && setShowConfirm(true)}
+                      disabled={!tradingGatesPass || submitting}
+                    >
+                      {submitting ? 'SUBMITTING…' : 'SUBMIT TRADING IDEA →'}
+                    </button>
+                  </>
+                )}
+              </>
+            ) : (
+              <>
             {/* ── Section 1: Executive Summary ── */}
             <SectionCard sectionKey="executiveSummary" label="Executive Summary" score={sectionScores[0]}>
               <div style={{ padding: '8px 10px', background: 'rgba(37,99,235,.06)', border: '1px solid rgba(37,99,235,.2)', borderRadius: 4, marginBottom: 10, fontSize: 9, color: 'var(--accent)', lineHeight: 1.6 }}>
@@ -1100,29 +1255,31 @@ export default function SubmitPage() {
               </button>
             </SectionCard>
 
-            {/* Mobile-only: MT5 + submit */}
-            {isMobile && (
-              <>
-                <div style={{ marginBottom: 10 }}>
-                  <QuantPreviewPanel data={quantPreview} loading={quantLoading} />
-                </div>
-                <div className="panel" style={{ padding: 14, marginBottom: 12 }}>
-                  <div className="sec-title" style={{ marginBottom: 10 }}>READINESS GATES</div>
-                  {gates.map(g => (
-                    <div key={g.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                      <span style={{ fontSize: 11, color: g.pass ? 'var(--long)' : 'var(--short)' }}>{g.pass ? '✓' : '✗'}</span>
-                      <span style={{ fontSize: 9, color: g.pass ? 'var(--text3)' : 'var(--text4)' }}>{g.label}</span>
+                {/* Mobile-only (investment mode): quant + gates + submit */}
+                {isMobile && (
+                  <>
+                    <div style={{ marginBottom: 10 }}>
+                      <QuantPreviewPanel data={quantPreview} loading={quantLoading} />
                     </div>
-                  ))}
-                </div>
-                <button
-                  className="btn btn-primary"
-                  style={{ width: '100%', justifyContent: 'center', padding: 14, fontSize: 12, marginBottom: 24, opacity: allGatesPass && !submitting ? 1 : 0.4 }}
-                  onClick={() => allGatesPass && setShowConfirm(true)}
-                  disabled={!allGatesPass || submitting}
-                >
-                  {submitting ? 'SUBMITTING…' : 'SUBMIT RESEARCH MEMO →'}
-                </button>
+                    <div className="panel" style={{ padding: 14, marginBottom: 12 }}>
+                      <div className="sec-title" style={{ marginBottom: 10 }}>READINESS GATES</div>
+                      {gates.map(g => (
+                        <div key={g.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <span style={{ fontSize: 11, color: g.pass ? 'var(--long)' : 'var(--short)' }}>{g.pass ? '✓' : '✗'}</span>
+                          <span style={{ fontSize: 9, color: g.pass ? 'var(--text3)' : 'var(--text4)' }}>{g.label}</span>
+                        </div>
+                      ))}
+                    </div>
+                    <button
+                      className="btn btn-primary"
+                      style={{ width: '100%', justifyContent: 'center', padding: 14, fontSize: 12, marginBottom: 24, opacity: allGatesPass && !submitting ? 1 : 0.4 }}
+                      onClick={() => allGatesPass && setShowConfirm(true)}
+                      disabled={!allGatesPass || submitting}
+                    >
+                      {submitting ? 'SUBMITTING…' : 'SUBMIT RESEARCH MEMO →'}
+                    </button>
+                  </>
+                )}
               </>
             )}
           </div>
@@ -1136,7 +1293,7 @@ export default function SubmitPage() {
               {/* Readiness checklist */}
               <div className="panel" style={{ padding: 14, marginBottom: 12 }}>
                 <div className="sec-title" style={{ marginBottom: 10 }}>SUBMISSION GATES</div>
-                {gates.map(g => (
+                {(mode === 'trading' ? tradingGates : gates).map(g => (
                   <div key={g.label} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
                     <span style={{
                       width: 16, height: 16, borderRadius: 3, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -1163,11 +1320,11 @@ export default function SubmitPage() {
 
               <button
                 className="btn btn-primary"
-                style={{ width: '100%', justifyContent: 'center', padding: '12px 14px', fontSize: 12, opacity: allGatesPass && !submitting ? 1 : 0.4, marginBottom: 6 }}
-                onClick={() => allGatesPass && setShowConfirm(true)}
-                disabled={!allGatesPass || submitting}
+                style={{ width: '100%', justifyContent: 'center', padding: '12px 14px', fontSize: 12, opacity: (mode === 'trading' ? tradingGatesPass : allGatesPass) && !submitting ? 1 : 0.4, marginBottom: 6 }}
+                onClick={() => (mode === 'trading' ? tradingGatesPass : allGatesPass) && setShowConfirm(true)}
+                disabled={!(mode === 'trading' ? tradingGatesPass : allGatesPass) || submitting}
               >
-                {submitting ? 'SUBMITTING…' : '✦  SUBMIT RESEARCH MEMO  →'}
+                {submitting ? 'SUBMITTING…' : mode === 'trading' ? '◈  SUBMIT TRADING IDEA  →' : '◆  SUBMIT RESEARCH MEMO  →'}
               </button>
               <div style={{ fontSize: 8, color: 'var(--text4)', textAlign: 'center' }}>
                 Identity anonymized · No edits · MT5 snapshot locked on submit
@@ -1190,7 +1347,7 @@ export default function SubmitPage() {
             </div>
             <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button className="btn btn-ghost" style={{ fontSize: 11 }} onClick={() => setShowConfirm(false)} disabled={submitting}>CANCEL</button>
-              <button className="btn btn-primary" style={{ fontSize: 11, opacity: submitting ? 0.5 : 1 }} onClick={submit} disabled={submitting}>
+              <button className="btn btn-primary" style={{ fontSize: 11, opacity: submitting ? 0.5 : 1 }} onClick={mode === 'trading' ? submitTrading : submit} disabled={submitting}>
                 {submitting ? 'SUBMITTING…' : 'CONFIRM & SUBMIT →'}
               </button>
             </div>
