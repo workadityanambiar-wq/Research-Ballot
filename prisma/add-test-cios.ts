@@ -12,7 +12,8 @@ const pool = new pg.Pool({
 });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-const PASSWORD = 'Admin@Century1';
+const PASSWORD = process.env.TEST_CIO_PASSWORD;
+if (!PASSWORD) { console.error('TEST_CIO_PASSWORD env var is not set'); process.exit(1); }
 const argon2Opts = { memoryCost: 65536, timeCost: 3, parallelism: 4 };
 const now = new Date();
 
@@ -23,7 +24,7 @@ const TEST_CIOS = [
 ];
 
 async function main() {
-  const passwordHash = await hash(PASSWORD, argon2Opts);
+  const passwordHash = await hash(PASSWORD!, argon2Opts);
 
   // Get total user count for legacyId uniqueness
   const total = await prisma.user.count();
@@ -61,7 +62,7 @@ async function main() {
         consistency: 85, peerScore: 92, ideaScore: 86, allocScore: 90, researchScore: 89,
       },
     });
-    console.log(`✓ ${u.displayName} → ${u.email} | password: "${PASSWORD}"`);
+    console.log(`✓ ${u.displayName} → ${u.email}`);
   }
 
   await pool.end();

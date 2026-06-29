@@ -14,7 +14,7 @@ const pool = new pg.Pool({
 const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
-const TEMP_PASSWORD = 'Apex@2025';
+const TEMP_PASSWORD = process.env.SEED_PASSWORD ?? 'Apex@2025';
 
 const argon2Opts = {
   memoryCost: 65536,

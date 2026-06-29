@@ -7,6 +7,9 @@ export async function GET(req: NextRequest) {
   if (!sessionUser) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   const rows = await prisma.user.findMany({
+    where: {
+      NOT: { legacyId: { startsWith: 'test.' } },
+    },
     select: {
       legacyId: true,
       displayName: true,
@@ -27,11 +30,13 @@ export async function GET(req: NextRequest) {
     orderBy: { researchScore: 'desc' },
   });
 
+  const isCio = sessionUser.role === 'CIO';
+
   return NextResponse.json(
     rows.map(u => ({
       id: u.legacyId,
       name: u.displayName,
-      email: u.email ?? '',
+      email: isCio ? (u.email ?? '') : '',
       title: u.title,
       role: u.role as string,
       tier: u.tier === 'A_PLUS' ? 'A+' : (u.tier as string),

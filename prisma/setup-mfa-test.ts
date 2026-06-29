@@ -66,7 +66,7 @@ ${results.map(r => `
     <div class="label">TOTP SECRET (manual entry)</div>
     <div class="value">${r.secret}</div>
     <div class="label">PASSWORD</div>
-    <div class="value">Admin@Century1</div>
+    <div class="value">[set via TEST_CIO_PASSWORD env var]</div>
   </div>
 </div>`).join('')}
 </body></html>`;

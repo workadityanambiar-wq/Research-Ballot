@@ -12,8 +12,8 @@ const pool = new pg.Pool({
 });
 const prisma = new PrismaClient({ adapter: new PrismaPg(pool) });
 
-// Test password that meets all requirements
-const TEST_PASSWORD = 'Test@Century1';
+const TEST_PASSWORD = process.env.RESET_ACCOUNT_PASSWORD;
+if (!TEST_PASSWORD) { console.error('RESET_ACCOUNT_PASSWORD env var is not set'); process.exit(1); }
 
 const argon2Opts = { memoryCost: 65536, timeCost: 3, parallelism: 4 };
 
@@ -27,7 +27,7 @@ const ACCOUNTS = [
 ];
 
 async function main() {
-  const passwordHash = await hash(TEST_PASSWORD, argon2Opts);
+  const passwordHash = await hash(TEST_PASSWORD!, argon2Opts);
   const now = new Date();
 
   for (const { legacyId, label } of ACCOUNTS) {
@@ -45,7 +45,7 @@ async function main() {
         pendingMfaSecret: null,
       },
     });
-    console.log(`✓ ${label} → password set to "${TEST_PASSWORD}"`);
+    console.log(`✓ ${label} reset`);
   }
 
   await pool.end();

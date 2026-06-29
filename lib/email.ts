@@ -4,7 +4,6 @@ const FROM_NAME  = process.env.BREVO_FROM_NAME  ?? 'Century Financial';
 async function send(to: string, toName: string, subject: string, html: string) {
   const key = (process.env.BREVO_API_KEY ?? '').trim();
   if (!key) {
-    console.log(`[EMAIL DEV] To: ${to} | Subject: ${subject}`);
     return;
   }
   const res = await fetch('https://api.brevo.com/v3/smtp/email', {

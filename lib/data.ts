@@ -1,23 +1,4 @@
-import type { User, Idea, PortfolioPosition, VoteMap, AuditEntry, Session, GamingFlag, TickerItem, Phase, Allocation } from './types';
-
-export const USERS: User[] = [
-  { id: 'arun.john', email: 'arun@century.ae', name: 'Arun Leslie John', title: 'Chief Market Analyst', role: 'CIO', tier: 'A+', hitRate: 73, avgRet: 18.4, sharpe: 1.82, drawCtrl: 91, consistency: 88, peerScore: 94, ideaScore: 88, allocScore: 92, researchScore: 91 },
-  { id: 'bhavik.mehta', email: 'bhavik@century.ae', name: 'Bhavik Mehta', title: 'Deputy Head Research', role: 'PM', tier: 'A+', hitRate: 71, avgRet: 16.2, sharpe: 1.74, drawCtrl: 88, consistency: 85, peerScore: 90, ideaScore: 85, allocScore: 90, researchScore: 88 },
-  { id: 'deepa.sachanandani', email: 'deepa@century.ae', name: 'Deepa Sachanandani', title: 'Deputy Head Research', role: 'PM', tier: 'A+', hitRate: 65, avgRet: 14.1, sharpe: 1.58, drawCtrl: 82, consistency: 79, peerScore: 84, ideaScore: 79, allocScore: 84, researchScore: 82 },
-  { id: 'meyyappan.lakshmanan', email: 'meyyappan@century.ae', name: 'Meyyappan Lakshmanan', title: 'Sr. Research Analyst', role: 'SR_ANALYST', tier: 'A', hitRate: 68, avgRet: 15.3, sharpe: 1.65, drawCtrl: 85, consistency: 82, peerScore: 86, ideaScore: 82, allocScore: 78, researchScore: 83 },
-  { id: 'intissar.elkhadiri', email: 'intissar@century.ae', name: 'Intissar El Khadiri', title: 'Senior Research Analyst', role: 'SR_ANALYST', tier: 'A', hitRate: 63, avgRet: 13.8, sharpe: 1.45, drawCtrl: 80, consistency: 76, peerScore: 81, ideaScore: 76, allocScore: 81, researchScore: 78 },
-  { id: 'dnyanada.kulkarni', email: 'dnyanada.k@century.ae', name: 'Dnyanada Kulkarni', title: 'Senior Research Analyst', role: 'SR_ANALYST', tier: 'A', hitRate: 61, avgRet: 12.9, sharpe: 1.38, drawCtrl: 78, consistency: 73, peerScore: 77, ideaScore: 73, allocScore: 75, researchScore: 75 },
-  { id: 'jagpavit.bhurjee', email: 'jagpavit.bhurjee@century.ae', name: 'Jagpavit Bhurjee', title: 'Research Analyst', role: 'ANALYST', tier: 'B', hitRate: 55, avgRet: 10.2, sharpe: 1.12, drawCtrl: 70, consistency: 65, peerScore: 68, ideaScore: 64, allocScore: 68, researchScore: 66 },
-  { id: 'saakshi.shingare', email: 'saakshi.shingare@century.ae', name: 'Saakshi Shingare', title: 'Research Analyst', role: 'ANALYST', tier: 'A', hitRate: 62, avgRet: 13.1, sharpe: 1.41, drawCtrl: 79, consistency: 74, peerScore: 80, ideaScore: 74, allocScore: 72, researchScore: 75 },
-  { id: 'devanshi.agrawal', email: 'devanshi.agrawal@centuryiq.in', name: 'Devanshi Agrawal', title: 'Research Analyst', role: 'ANALYST', tier: 'B', hitRate: 52, avgRet: 9.4, sharpe: 1.05, drawCtrl: 66, consistency: 62, peerScore: 64, ideaScore: 61, allocScore: 63, researchScore: 62 },
-  { id: 'labiba.angona', email: 'labiba.angona@century.ae', name: 'Labiba Zoha Angona', title: 'Research Analyst', role: 'ANALYST', tier: 'B', hitRate: 57, avgRet: 11.3, sharpe: 1.21, drawCtrl: 72, consistency: 68, peerScore: 71, ideaScore: 67, allocScore: 70, researchScore: 68 },
-  { id: 'aditya.nambiar', email: 'aditya.nambiar@centuryiq.in', name: 'Aditya Nambiar', title: 'Research Analyst', role: 'ANALYST', tier: 'A', hitRate: 60, avgRet: 12.5, sharpe: 1.38, drawCtrl: 77, consistency: 72, peerScore: 76, ideaScore: 72, allocScore: 74, researchScore: 73 },
-  { id: 'fenil.gala', email: 'fenil.gala@centuryiq.in', name: 'Fenil Gala', title: 'Research Analyst', role: 'ANALYST', tier: 'B', hitRate: 53, avgRet: 9.8, sharpe: 1.08, drawCtrl: 67, consistency: 63, peerScore: 65, ideaScore: 62, allocScore: 61, researchScore: 62 },
-  { id: 'kriti.toshniwal', email: 'kriti.toshniwal@centuryiq.in', name: 'Kriti Toshniwal', title: 'Research Analyst', role: 'ANALYST', tier: 'B', hitRate: 56, avgRet: 10.9, sharpe: 1.18, drawCtrl: 71, consistency: 66, peerScore: 69, ideaScore: 66, allocScore: 69, researchScore: 67 },
-  { id: 'dhairya.jani', email: 'dhairya.jani@centuryiq.in', name: 'Dhairya Jani', title: 'Research Analyst', role: 'ANALYST', tier: 'B', hitRate: 44, avgRet: 7.2, sharpe: 0.87, drawCtrl: 55, consistency: 50, peerScore: 52, ideaScore: 52, allocScore: 55, researchScore: 53 },
-  { id: 'vritti.shah', email: 'vritti.shah@century.ae', name: 'Vritti Shah', title: 'Research Analyst', role: 'ANALYST', tier: 'B', hitRate: 58, avgRet: 11.8, sharpe: 1.25, drawCtrl: 73, consistency: 69, peerScore: 72, ideaScore: 68, allocScore: 65, researchScore: 67 },
-  { id: 'kashish.dhanani', email: 'kashish.dhanani@century.ae', name: 'Kashish Dhanani', title: 'Research Analyst', role: 'ANALYST', tier: 'B', hitRate: 46, avgRet: 7.8, sharpe: 0.91, drawCtrl: 58, consistency: 53, peerScore: 55, ideaScore: 54, allocScore: 57, researchScore: 55 },
-];
+import type { Idea, PortfolioPosition, VoteMap, TickerItem, Phase, Allocation } from './types';
 
 export const IDEAS0: Idea[] = [
   { id: 'IDEA-001', ticker: 'NVDA', assetClass: 'US Equities', dir: 'LONG', entry: 875.50, stop: 810.00, target: 1052.00, hold: '3-6M', posSize: 2.5, conv: 9, expRet: 20.2, expDD: -7.5, rr: 2.68, thesis: 'Dominant AI infrastructure play. Blackwell GPU ramp accelerating data center demand. CUDA moat unassailable with 85% market share. H200 supply constraints easing Q3.', catalysts: ['Q3 earnings beat', 'Blackwell ramp announcement', 'Azure/GCP capex expansion'], risks: ['Export restriction tightening', 'AMD MI300X share gains', 'Valuation compression'], authorId: 'meyyappan.lakshmanan', submittedAt: '2025-06-23T09:15Z', weekId: 'W26-2025', status: 'ACTIVE', totalCredits: 3420, rank: 1, pmScore: 91.2, skillScore: 87.5, rrScore: 89.3, quantScore: 85.1, finalScore: 89.1, momentumScore: 88, rsScore: 91, earningRevScore: 85, approvalStatus: 'APPROVED' },
@@ -58,41 +39,6 @@ export const VOTES0: VoteMap = {
   'IDEA-010': { 'jagpavit.bhurjee': 120, 'saakshi.shingare': 50, 'devanshi.agrawal': 60, 'meyyappan.lakshmanan': 100, 'intissar.elkhadiri': 80, 'aditya.nambiar': 100, 'fenil.gala': 50, 'labiba.angona': 80, 'kashish.dhanani': 100, 'kriti.toshniwal': 100 },
 };
 
-export const AUDIT: AuditEntry[] = [
-  { id: 'AUD-015', ts: '2025-06-24 16:42:18', userId: 'arun.john', action: 'TRADE_APPROVED', detail: 'IDEA-001 NVDA LONG approved for portfolio 15%', ip: '10.0.1.45', dev: 'WIN-WS-01', risk: 'LOW' },
-  { id: 'AUD-014', ts: '2025-06-24 16:38:55', userId: 'bhavik.mehta', action: 'TRADE_APPROVED', detail: 'IDEA-002 MSFT LONG approved — allocation confirmed', ip: '10.0.1.52', dev: 'WIN-WS-02', risk: 'LOW' },
-  { id: 'AUD-013', ts: '2025-06-24 16:35:12', userId: 'bhavik.mehta', action: 'TRADE_APPROVED', detail: 'IDEA-003 META LONG approved', ip: '10.0.1.52', dev: 'WIN-WS-02', risk: 'LOW' },
-  { id: 'AUD-012', ts: '2025-06-24 15:22:10', userId: 'meyyappan.lakshmanan', action: 'IDEA_SUBMITTED', detail: 'IDEA-001 submitted (NVDA LONG / Conv:9 / RR:2.68)', ip: '10.0.1.67', dev: 'MAC-PRO-ML01', risk: 'LOW' },
-  { id: 'AUD-011', ts: '2025-06-24 14:48:33', userId: 'saakshi.shingare', action: 'VOTE_CAST', detail: 'Credit allocation: 300cr IDEA-001, 250cr IDEA-003, 200cr IDEA-006, 150cr IDEA-008', ip: '10.0.1.83', dev: 'WIN-LT-SS01', risk: 'LOW' },
-  { id: 'AUD-010', ts: '2025-06-24 14:15:22', userId: 'dhairya.jani', action: 'LOGIN_FAILED', detail: 'Failed login: invalid OTP code (attempt 2 of 3)', ip: '10.0.2.144', dev: 'UNKNOWN', risk: 'HIGH' },
-  { id: 'AUD-009', ts: '2025-06-24 14:12:08', userId: 'dhairya.jani', action: 'LOGIN_FAILED', detail: 'Failed login: incorrect password', ip: '10.0.2.144', dev: 'UNKNOWN', risk: 'MEDIUM' },
-  { id: 'AUD-008', ts: '2025-06-24 13:52:09', userId: 'intissar.elkhadiri', action: 'IDEA_SUBMITTED', detail: 'IDEA-003 submitted (META LONG / Conv:8 / RR:2.56)', ip: '10.0.1.71', dev: 'MAC-LT-IK01', risk: 'LOW' },
-  { id: 'AUD-007', ts: '2025-06-24 13:30:44', userId: 'aditya.nambiar', action: 'VOTE_CAST', detail: 'Credit allocation: 400cr IDEA-002, 200cr IDEA-004, 200cr IDEA-001, 200cr IDEA-005', ip: '10.0.1.91', dev: 'WIN-LT-AN01', risk: 'MEDIUM' },
-  { id: 'AUD-006', ts: '2025-06-24 12:18:55', userId: 'arun.john', action: 'PERMISSION_CHANGE', detail: 'User kashish.dhanani: tier update B→A submitted for review', ip: '10.0.1.45', dev: 'WIN-WS-01', risk: 'LOW' },
-  { id: 'AUD-005', ts: '2025-06-24 11:45:30', userId: 'deepa.sachanandani', action: 'ALLOCATION_ADJUSTED', detail: 'IDEA-004 GS: position override 8%→6% (risk budget constraint)', ip: '10.0.1.58', dev: 'WIN-WS-03', risk: 'LOW' },
-  { id: 'AUD-004', ts: '2025-06-24 10:22:18', userId: 'dnyanada.kulkarni', action: 'IDEA_SUBMITTED', detail: 'IDEA-006 submitted (AMZN LONG / Conv:8 / RR:2.20)', ip: '10.0.1.74', dev: 'WIN-WS-04', risk: 'LOW' },
-  { id: 'AUD-003', ts: '2025-06-23 17:30:12', userId: 'arun.john', action: 'SESSION_TERMINATED', detail: 'Forced session termination: kriti.toshniwal — concurrent login from unrecognized device', ip: '10.0.1.45', dev: 'WIN-WS-01', risk: 'HIGH' },
-  { id: 'AUD-002', ts: '2025-06-23 16:44:29', userId: 'kriti.toshniwal', action: 'LOGIN_ANOMALY', detail: 'Device fingerprint mismatch. Expected WIN-WORK-KT09, received MAC-HOME-KT. Session blocked.', ip: '172.16.0.22', dev: 'MAC-HOME-KT', risk: 'HIGH' },
-  { id: 'AUD-001', ts: '2025-06-23 09:00:00', userId: 'arun.john', action: 'SESSION_STARTED', detail: 'Weekly cycle W26-2025 initiated. Credit reset: 1000cr distributed to 15 eligible analysts.', ip: '10.0.1.45', dev: 'WIN-WS-01', risk: 'LOW' },
-];
-
-export const SESSIONS: Session[] = [
-  { userId: 'arun.john', name: 'Arun Leslie John', role: 'CIO', ip: '10.0.1.45', dev: 'WIN-WS-01', lastAct: '2m ago', status: 'ACTIVE', mfa: true, risk: 2 },
-  { userId: 'bhavik.mehta', name: 'Bhavik Mehta', role: 'PM', ip: '10.0.1.52', dev: 'WIN-WS-02', lastAct: '8m ago', status: 'ACTIVE', mfa: true, risk: 3 },
-  { userId: 'deepa.sachanandani', name: 'Deepa Sachanandani', role: 'PM', ip: '10.0.1.58', dev: 'WIN-WS-03', lastAct: '31m ago', status: 'IDLE', mfa: true, risk: 5 },
-  { userId: 'meyyappan.lakshmanan', name: 'Meyyappan Lakshmanan', role: 'PM', ip: '10.0.1.67', dev: 'MAC-PRO-ML01', lastAct: '15m ago', status: 'ACTIVE', mfa: true, risk: 5 },
-  { userId: 'saakshi.shingare', name: 'Saakshi Shingare', role: 'PM', ip: '10.0.1.83', dev: 'WIN-LT-SS01', lastAct: '3m ago', status: 'ACTIVE', mfa: true, risk: 8 },
-  { userId: 'dhairya.jani', name: 'Dhairya Jani', role: 'PM', ip: '10.0.2.144', dev: 'UNKNOWN', lastAct: '52m ago', status: 'BLOCKED', mfa: false, risk: 87 },
-  { userId: 'kriti.toshniwal', name: 'Kriti Toshniwal', role: 'PM', ip: '172.16.0.22', dev: 'MAC-HOME-KT', lastAct: '1h 14m ago', status: 'TERMINATED', mfa: true, risk: 64 },
-  { userId: 'aditya.nambiar', name: 'Aditya Nambiar', role: 'PM', ip: '10.0.1.91', dev: 'WIN-LT-AN01', lastAct: '22m ago', status: 'ACTIVE', mfa: true, risk: 12 },
-];
-
-export const GAMING: GamingFlag[] = [
-  { id: 'G-001', type: 'RECIPROCAL_VOTING', sev: 'HIGH', users: ['devanshi.agrawal', 'fenil.gala'], detail: 'Mutual voting pattern: 4/4 weeks bidirectional. Similarity coefficient 0.94.', score: 82, ts: '2025-06-24 14:22' },
-  { id: 'G-002', type: 'VOTE_CONCENTRATION', sev: 'MEDIUM', users: ['dhairya.jani'], detail: '87% of weekly credits allocated to single idea IDEA-007. Peer median: 34%.', score: 58, ts: '2025-06-24 12:15' },
-  { id: 'G-003', type: 'VOTING_RING', sev: 'HIGH', users: ['jagpavit.bhurjee', 'vritti.shah', 'kashish.dhanani'], detail: 'Triangular mutual support network detected. Voting similarity 91% over 6 weeks.', score: 76, ts: '2025-06-23 16:30' },
-  { id: 'G-004', type: 'ANALYST_FAVORITISM', sev: 'LOW', users: ['intissar.elkhadiri', 'labiba.angona'], detail: 'intissar.elkhadiri allocated 340% above-average credits to labiba.angona ideas over 4 weeks.', score: 41, ts: '2025-06-22 11:45' },
-];
 
 export const TICKERS: TickerItem[] = [
   { sym: 'SPX', val: '5,842.31', chg: '+0.38%', up: true },
